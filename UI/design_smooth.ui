@@ -14,7 +14,141 @@
    <string>MainWindow</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">background-color: rgb(248,244,220);</string>
+   <string notr="true">/* =======================================================
+   GLOBAL MAIN THEME
+   Deep blue/purple background, light text.
+   ======================================================= */
+QMainWindow, QWidget {
+    /* The main background color - A deep Ubuntu-ish purple-grey */
+    background-color: #282a36; 
+    /* Main text color - Off-white for good contrast without eye strain */
+    color: #f8f8f2;
+    /* Optional: Sets a modern system font */
+    font-family: &quot;Segoe UI&quot;, Roboto, Helvetica, Arial, sans-serif;
+    font-size: 10pt; /* Slightly larger base font for modern feel */
+}
+
+/* =======================================================
+   INPUTS &amp; TEXT BOXES (The &quot;Gemini&quot; look)
+   Very rounded corners, slightly lighter background so they pop.
+   ======================================================= */
+QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QComboBox, QPlainTextEdit {
+    /* Lighter background than the main window to stand out */
+    background-color: #343746; 
+    /* A subtle border defining the shape */
+    border: 2px solid #44475a; 
+    /* HEAVY rounding for that modern flowy look */
+    border-radius: 12px; 
+    /* Crucial padding so text doesn't touch the edges */
+    padding: 8px 12px; 
+    color: #f8f8f2;
+    /* Purple selection color */
+    selection-background-color: #bd93f9; 
+    selection-color: #282a36;
+}
+
+/* The &quot;Splash&quot; effect when you click inside an input box */
+QLineEdit:focus, QSpinBox:focus, QTextEdit:focus, QComboBox:focus {
+    /* Bright Ubuntu purple border when active */
+    border: 2px solid #bd93f9; 
+    background-color: #3b3e4f; /* Slightly lighter splash */
+}
+
+/* Spinbox up/down arrows need specific styling so they don't look blocky */
+QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+    background-color: transparent;
+    border-radius: 6px;
+    margin: 2px;
+}
+QAbstractSpinBox::up-button:hover, QAbstractSpinBox::down-button:hover {
+    background-color: #44475a;
+}
+
+
+/* =======================================================
+   BUTTONS (The Ubuntu Accent)
+   Purple splash, very round.
+   ======================================================= */
+QPushButton {
+    /* The main Ubuntu purple accent color */
+    background-color: #6272a4; 
+    color: #ffffff;
+    border: none;
+    /* Matching the input boxes rounding */
+    border-radius: 12px; 
+    padding: 10px 24px;
+    font-weight: bold;
+}
+
+/* Hover state - gets brighter */
+QPushButton:hover {
+    background-color: #bd93f9; /* Lighter bright purple */
+}
+
+/* Pressed state - gets darker */
+QPushButton:pressed {
+    background-color: #4f5b85;
+}
+
+/* Disabled state */
+QPushButton:disabled {
+    background-color: #343746;
+    color: #6272a4;
+    border: 1px solid #44475a;
+}
+
+
+/* =======================================================
+   CONTAINERS &amp; LABELS
+   Removing the old &quot;boxy&quot; look.
+   ======================================================= */
+
+/* Clean Labels */
+QLabel {
+    color: #f8f8f2;
+    border: none;
+    padding: 2px;
+}
+
+/* Modernizing Group Boxes */
+QGroupBox {
+    /* subtle border instead of the default etched line */
+    border: 1px solid #6272a4; 
+    border-radius: 12px;
+    /* Push the content down to make room for the title */
+    margin-top: 24px; 
+    padding-top: 10px;
+    font-weight: bold;
+}
+
+/* Styling the GroupBox Title text */
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 5px;
+    color: #bd93f9; /* Purple title color */
+}
+
+
+/* =======================================================
+   SCROLLBARS (Optional, but completes the look)
+   Making them dark and slim.
+   ======================================================= */
+QScrollBar:vertical {
+    border: none;
+    background: #282a36;
+    width: 10px;
+    margin: 0px;
+}
+QScrollBar::handle:vertical {
+    background: #44475a;
+    border-radius: 5px;
+    min-height: 20px;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QLabel" name="label_Title">
@@ -28,20 +162,19 @@
     </property>
     <property name="font">
      <font>
-      <pointsize>12</pointsize>
-      <weight>75</weight>
-      <bold>true</bold>
+      <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+      <pointsize>10</pointsize>
      </font>
     </property>
     <property name="text">
-     <string>Image viewer v7.00</string>
+     <string>Unified Software v1.00</string>
     </property>
    </widget>
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
-      <x>880</x>
-      <y>10</y>
+      <x>890</x>
+      <y>40</y>
       <width>792</width>
       <height>921</height>
      </rect>
@@ -255,57 +388,30 @@
      <rect>
       <x>20</x>
       <y>40</y>
-      <width>924</width>
-      <height>970</height>
+      <width>941</width>
+      <height>1031</height>
      </rect>
     </property>
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="20" column="5">
-      <widget class="QCheckBox" name="checkBox_SaveFlatten">
+    <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,0,0,0,0,0,0">
+     <item row="2" column="2">
+      <widget class="QPushButton" name="pushButton_UpdateSeg">
        <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="text">
-        <string>Flatten</string>
-       </property>
-       <property name="checked">
         <bool>false</bool>
        </property>
-      </widget>
-     </item>
-     <item row="14" column="0" colspan="3">
-      <widget class="QPushButton" name="pushButton_Proj">
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(170, 255, 127);</string>
-       </property>
        <property name="text">
-        <string>Preview Current Slab</string>
+        <string>Update</string>
        </property>
       </widget>
      </item>
-     <item row="12" column="0">
-      <widget class="QSpinBox" name="spinBox_StartLayer">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="5">
-      <widget class="QPushButton" name="pushButton_Difference">
+     <item row="2" column="0" colspan="2">
+      <widget class="QPushButton" name="pushButton_ManualCorrect">
        <property name="enabled">
         <bool>true</bool>
        </property>
        <property name="font">
         <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -314,87 +420,7 @@
         <string notr="true">background-color: rgb(85, 170, 255);</string>
        </property>
        <property name="text">
-        <string>Registration</string>
-       </property>
-       <property name="checkable">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="10" column="5">
-      <widget class="QLabel" name="label_12">
-       <property name="text">
-        <string>End Offest Pixel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="19" column="2" colspan="5">
-      <widget class="QLineEdit" name="lineEdit_SavePath">
-       <property name="text">
-        <string>Input save path here</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="6">
-      <widget class="QPushButton" name="pushButton_BatchOpen">
-       <property name="text">
-        <string>Open Folder</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="5">
-      <widget class="QPushButton" name="pushButton_ORL">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(85, 170, 255);</string>
-       </property>
-       <property name="text">
-        <string>Thickness Calc </string>
-       </property>
-       <property name="checkable">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="6">
-      <widget class="QPushButton" name="pushButton_SliceZoomIn">
-       <property name="text">
-        <string>+ ZoomIn</string>
-       </property>
-      </widget>
-     </item>
-     <item row="19" column="0" colspan="2">
-      <widget class="QPushButton" name="pushButton_OpenSaveFolder">
-       <property name="text">
-        <string>Open Save Folder</string>
-       </property>
-      </widget>
-     </item>
-     <item row="10" column="3">
-      <widget class="QLabel" name="label_11">
-       <property name="text">
-        <string>Start Offset Pixel</string>
-       </property>
-      </widget>
-     </item>
-     <item row="11" column="3">
-      <widget class="QSpinBox" name="spinBox_StartOffset">
-       <property name="minimum">
-        <number>-999</number>
-       </property>
-       <property name="maximum">
-        <number>999</number>
-       </property>
-       <property name="value">
-        <number>-2</number>
+        <string>Manual Seg Check</string>
        </property>
       </widget>
      </item>
@@ -405,6 +431,8 @@
        </property>
        <property name="font">
         <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -420,7 +448,500 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="6">
+     <item row="2" column="4">
+      <widget class="QPushButton" name="pushButton_ORL">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="font">
+        <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(85, 170, 255);</string>
+       </property>
+       <property name="text">
+        <string>Thickness Calc </string>
+       </property>
+       <property name="checkable">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QPushButton" name="pushButton_Flatten">
+       <property name="styleSheet">
+        <string notr="true"/>
+       </property>
+       <property name="text">
+        <string>Process Flatten</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="label_15">
+       <property name="text">
+        <string>Flatten ref layer</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0" colspan="3">
+      <widget class="QLineEdit" name="lineEdit_OpenPath">
+       <property name="text">
+        <string>Input open path here</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" colspan="5">
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="palette">
+        <palette>
+         <active>
+          <colorrole role="WindowText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>248</red>
+             <green>248</green>
+             <blue>242</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Button">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Text">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ButtonText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Base">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Window">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="HighlightedText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+         </active>
+         <inactive>
+          <colorrole role="WindowText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>248</red>
+             <green>248</green>
+             <blue>242</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Button">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Text">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ButtonText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Base">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Window">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="HighlightedText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+         </inactive>
+         <disabled>
+          <colorrole role="WindowText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>248</red>
+             <green>248</green>
+             <blue>242</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Button">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Text">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>248</red>
+             <green>248</green>
+             <blue>242</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="ButtonText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>248</red>
+             <green>248</green>
+             <blue>242</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Base">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="Window">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>40</red>
+             <green>42</green>
+             <blue>54</blue>
+            </color>
+           </brush>
+          </colorrole>
+          <colorrole role="HighlightedText">
+           <brush brushstyle="SolidPattern">
+            <color alpha="255">
+             <red>0</red>
+             <green>0</green>
+             <blue>0</blue>
+            </color>
+           </brush>
+          </colorrole>
+         </disabled>
+        </palette>
+       </property>
+       <property name="font">
+        <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="tab_5">
+        <attribute name="title">
+         <string>Custom Load</string>
+        </attribute>
+        <widget class="QPushButton" name="pushButton_LoadStru">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>20</y>
+           <width>151</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Load Stru</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pushButton_LoadFlow">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>60</y>
+           <width>151</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Load Flow</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pushButton_LoadSeg">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>100</y>
+           <width>151</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Load Seg</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_16">
+         <property name="geometry">
+          <rect>
+           <x>170</x>
+           <y>70</y>
+           <width>131</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Image Size:</string>
+         </property>
+        </widget>
+        <widget class="QComboBox" name="comboBox_size">
+         <property name="geometry">
+          <rect>
+           <x>290</x>
+           <y>70</y>
+           <width>251</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <item>
+          <property name="text">
+           <string>6x6 mm</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>12x12 mm</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>3x3 mm</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>N/A</string>
+          </property>
+         </item>
+        </widget>
+        <widget class="QComboBox" name="comboBox_type">
+         <property name="geometry">
+          <rect>
+           <x>290</x>
+           <y>30</y>
+           <width>251</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <item>
+          <property name="text">
+           <string>ZEISS PLEX Elite 9000</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>ZEISS Cirrus 6000</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Intalight DREAM OCT</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SD-OCT</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>SS-OCT</string>
+          </property>
+         </item>
+        </widget>
+        <widget class="QLabel" name="label_19">
+         <property name="geometry">
+          <rect>
+           <x>170</x>
+           <y>30</y>
+           <width>131</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Imaging Device:</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="pushButton_SegWizard">
+         <property name="geometry">
+          <rect>
+           <x>220</x>
+           <y>110</y>
+           <width>251</width>
+           <height>41</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Layer Segmentation Wizard</string>
+         </property>
+        </widget>
+        <zorder>label_16</zorder>
+        <zorder>label_19</zorder>
+        <zorder>pushButton_LoadStru</zorder>
+        <zorder>pushButton_LoadFlow</zorder>
+        <zorder>pushButton_LoadSeg</zorder>
+        <zorder>comboBox_size</zorder>
+        <zorder>comboBox_type</zorder>
+        <zorder>pushButton_SegWizard</zorder>
+       </widget>
+       <widget class="QWidget" name="tab_6">
+        <attribute name="title">
+         <string>Batch Load</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="lineEdit_FlowPattern">
+           <property name="text">
+            <string>Flow.dcm</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_StruPattern">
+           <property name="text">
+            <string>Stru.dcm</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2" rowspan="6">
+          <widget class="QListWidget" name="listWidget_BatchList"/>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="lineEdit_SegPattern">
+           <property name="text">
+            <string>Seg.npy</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QPushButton" name="pushButton_RunSingle">
+           <property name="font">
+            <font>
+             <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+             <pointsize>10</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(255, 85, 0);</string>
+           </property>
+           <property name="text">
+            <string>Run Single</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="pushButton_RunBatch">
+           <property name="font">
+            <font>
+             <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+             <pointsize>10</pointsize>
+             <weight>75</weight>
+             <bold>true</bold>
+            </font>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">background-color: rgb(255, 85, 0);</string>
+           </property>
+           <property name="text">
+            <string>Run Batch</string>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QPushButton" name="pushButton_UpdateRule">
+           <property name="text">
+            <string>Update Rule</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+     <item row="1" column="5">
       <layout class="QGridLayout" name="gridLayout">
        <item row="0" column="0">
         <widget class="QRadioButton" name="radioButton_DisplayNone">
@@ -504,44 +1025,23 @@
        </item>
       </layout>
      </item>
-     <item row="9" column="5">
-      <widget class="QCheckBox" name="checkBox_ProjFlow">
+     <item row="7" column="0">
+      <widget class="QLabel" name="label_8">
        <property name="text">
-        <string>FLow</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
+        <string>Projection Method</string>
        </property>
       </widget>
      </item>
-     <item row="5" column="0" rowspan="2" colspan="8">
-      <widget class="Line" name="line">
+     <item row="3" column="2">
+      <widget class="QSpinBox" name="spinBox_FlattenLayer"/>
+     </item>
+     <item row="13" column="1">
+      <widget class="QSpinBox" name="spinBox_ProjGroups"/>
+     </item>
+     <item row="14" column="0" colspan="8">
+      <widget class="Line" name="line_3">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="14" column="3">
-      <widget class="QPushButton" name="pushButton_ImportSetting">
-       <property name="text">
-        <string>Import Setting</string>
-       </property>
-      </widget>
-     </item>
-     <item row="17" column="3">
-      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
-     </item>
-     <item row="11" column="6">
-      <widget class="QPushButton" name="pushButton_Vert">
-       <property name="text">
-        <string>Flip Vertical</string>
-       </property>
-      </widget>
-     </item>
-     <item row="21" column="2">
-      <widget class="QCheckBox" name="checkBox_SaveOriVideo">
-       <property name="text">
-        <string>OriVideo</string>
        </property>
       </widget>
      </item>
@@ -552,6 +1052,8 @@
        </property>
        <property name="font">
         <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
@@ -564,66 +1066,260 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
-      <widget class="QLabel" name="label_15">
+     <item row="9" column="0">
+      <widget class="QLabel" name="label">
        <property name="text">
-        <string>Flatten ref layer</string>
+        <string>Start Line Index</string>
        </property>
       </widget>
      </item>
-     <item row="18" column="0" colspan="8">
+     <item row="8" column="1">
+      <widget class="QPushButton" name="pushButton_AddTable">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Add </string>
+       </property>
+      </widget>
+     </item>
+     <item row="18" column="2">
+      <widget class="QCheckBox" name="checkBox_SaveProjections">
+       <property name="text">
+        <string>ProjImages</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="2">
+      <widget class="QPushButton" name="pushButton_ZoomToFit">
+       <property name="text">
+        <string>Fit</string>
+       </property>
+      </widget>
+     </item>
+     <item row="18" column="0" colspan="2">
+      <widget class="QCheckBox" name="checkBox_SaveSeg">
+       <property name="text">
+        <string>Segmentations</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QCheckBox" name="checkBox_ProjStru">
+       <property name="text">
+        <string>Stru</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="4">
+      <widget class="QPushButton" name="pushButton_volclock">
+       <property name="text">
+        <string>Rotate Vol Clock</string>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="3">
+      <widget class="QPushButton" name="pushButton_ExportSetting">
+       <property name="text">
+        <string>Export Setting</string>
+       </property>
+      </widget>
+     </item>
+     <item row="19" column="3">
+      <widget class="QCheckBox" name="checkBox_AviVideo">
+       <property name="text">
+        <string>AviVideo</string>
+       </property>
+      </widget>
+     </item>
+     <item row="18" column="3">
+      <widget class="QCheckBox" name="checkBox_SaveSegVideo">
+       <property name="text">
+        <string>SegVideo</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="4">
+      <widget class="QPushButton" name="pushButton_hori">
+       <property name="text">
+        <string>Flip Horizontal</string>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="0">
+      <widget class="QSpinBox" name="spinBox_StartLayer">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+     </item>
+     <item row="18" column="4">
+      <widget class="QCheckBox" name="checkBox_SaveFlatten">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>Flatten</string>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="1">
+      <widget class="QSpinBox" name="spinBox_EndLayer">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="3">
+      <widget class="QSpinBox" name="spinBox_EndOffset">
+       <property name="minimum">
+        <number>-999</number>
+       </property>
+       <property name="maximum">
+        <number>999</number>
+       </property>
+       <property name="value">
+        <number>2</number>
+       </property>
+      </widget>
+     </item>
+     <item row="12" column="0" colspan="3">
+      <widget class="QPushButton" name="pushButton_Proj">
+       <property name="font">
+        <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(170, 255, 127);</string>
+       </property>
+       <property name="text">
+        <string>Preview Current Slab</string>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="0">
+      <widget class="QLabel" name="label_14">
+       <property name="text">
+        <string>Projection group</string>
+       </property>
+      </widget>
+     </item>
+     <item row="15" column="3">
+      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
+     </item>
+     <item row="17" column="0" colspan="2">
+      <widget class="QPushButton" name="pushButton_OpenSaveFolder">
+       <property name="text">
+        <string>Open Save Folder</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="4">
+      <widget class="QPushButton" name="pushButton_Difference">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="font">
+        <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(85, 170, 255);</string>
+       </property>
+       <property name="text">
+        <string>Registration</string>
+       </property>
+       <property name="checkable">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="16" column="0" colspan="8">
       <widget class="Line" name="line_2">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
       </widget>
      </item>
-     <item row="16" column="0" colspan="8">
-      <widget class="Line" name="line_3">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="12" column="5">
-      <widget class="QPushButton" name="pushButton_DelTable">
+     <item row="17" column="2" colspan="4">
+      <widget class="QLineEdit" name="lineEdit_SavePath">
        <property name="text">
-        <string>Del</string>
+        <string>Input save path here</string>
        </property>
       </widget>
      </item>
-     <item row="9" column="0">
-      <widget class="QLabel" name="label_8">
+     <item row="9" column="3">
+      <widget class="QLabel" name="label_12">
        <property name="text">
-        <string>Projection Method</string>
+        <string>End Offest Pixel</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="2">
-      <widget class="QPushButton" name="pushButton_UpdateSeg">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Update</string>
-       </property>
-      </widget>
-     </item>
-     <item row="21" column="0">
+     <item row="19" column="0">
       <widget class="QCheckBox" name="checkBox_SaveOAC">
        <property name="text">
         <string>OAC</string>
        </property>
       </widget>
      </item>
-     <item row="4" column="6">
-      <widget class="QPushButton" name="pushButton_SliceZoomOut">
+     <item row="19" column="2">
+      <widget class="QCheckBox" name="checkBox_SaveOriVideo">
        <property name="text">
-        <string>- ZoomOut</string>
+        <string>OriVideo</string>
        </property>
       </widget>
      </item>
-     <item row="10" column="0">
+     <item row="4" column="0">
+      <widget class="QPushButton" name="pushButton_SliceZoomIn">
+       <property name="text">
+        <string>+ ZoomIn</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0" rowspan="2" colspan="8">
+      <widget class="Line" name="line">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="12" column="3">
+      <widget class="QPushButton" name="pushButton_ImportSetting">
+       <property name="text">
+        <string>Import Setting</string>
+       </property>
+      </widget>
+     </item>
+     <item row="8" column="0">
       <widget class="QComboBox" name="comboBox_ProjMethod">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -663,93 +1359,7 @@
        </item>
       </widget>
      </item>
-     <item row="3" column="2">
-      <widget class="QSpinBox" name="spinBox_FlattenLayer"/>
-     </item>
-     <item row="15" column="1">
-      <widget class="QSpinBox" name="spinBox_ProjGroups"/>
-     </item>
-     <item row="21" column="3">
-      <widget class="QCheckBox" name="checkBox_AviVideo">
-       <property name="text">
-        <string>AviVideo</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0" colspan="2">
-      <widget class="QPushButton" name="pushButton_ManualCorrect">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="font">
-        <font>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(85, 170, 255);</string>
-       </property>
-       <property name="text">
-        <string>Manual Seg Check</string>
-       </property>
-      </widget>
-     </item>
-     <item row="12" column="3">
-      <widget class="QPushButton" name="pushButton_AddTable">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Add </string>
-       </property>
-      </widget>
-     </item>
-     <item row="9" column="6">
-      <widget class="QPushButton" name="pushButton_volclock">
-       <property name="text">
-        <string>Rotate Vol Clock</string>
-       </property>
-      </widget>
-     </item>
-     <item row="20" column="0" colspan="2">
-      <widget class="QCheckBox" name="checkBox_SaveSeg">
-       <property name="text">
-        <string>Segmentations</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="20" column="2">
-      <widget class="QCheckBox" name="checkBox_SaveProjections">
-       <property name="text">
-        <string>ProjImages</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="6">
-      <widget class="QPushButton" name="pushButton_ZoomToFit">
-       <property name="text">
-        <string>Fit</string>
-       </property>
-      </widget>
-     </item>
-     <item row="15" column="3">
-      <widget class="QPushButton" name="pushButton_ExportSetting">
-       <property name="text">
-        <string>Export Setting</string>
-       </property>
-      </widget>
-     </item>
-     <item row="13" column="0" colspan="6">
+     <item row="11" column="0" colspan="6">
       <widget class="QTableWidget" name="tableWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -765,7 +1375,8 @@
        </property>
        <property name="font">
         <font>
-         <pointsize>8</pointsize>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
         </font>
        </property>
        <attribute name="horizontalHeaderDefaultSectionSize">
@@ -811,15 +1422,50 @@
        </column>
       </widget>
      </item>
-     <item row="0" column="0" colspan="3">
-      <widget class="QLineEdit" name="lineEdit_OpenPath">
+     <item row="19" column="1">
+      <widget class="QPushButton" name="pushButton_SaveResult">
+       <property name="font">
+        <font>
+         <family>Segoe UI,Roboto,Helvetica,Arial,sans-serif</family>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(255, 85, 0);</string>
+       </property>
        <property name="text">
-        <string>Input open path here</string>
+        <string>Save result</string>
        </property>
       </widget>
      </item>
-     <item row="11" column="5">
-      <widget class="QSpinBox" name="spinBox_EndOffset">
+     <item row="7" column="2">
+      <widget class="QCheckBox" name="checkBox_ProjFlow">
+       <property name="text">
+        <string>FLow</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="1">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>End Line Index</string>
+       </property>
+      </widget>
+     </item>
+     <item row="9" column="2">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Start Offset Pixel</string>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="2">
+      <widget class="QSpinBox" name="spinBox_StartOffset">
        <property name="minimum">
         <number>-999</number>
        </property>
@@ -827,309 +1473,36 @@
         <number>999</number>
        </property>
        <property name="value">
-        <number>2</number>
+        <number>-2</number>
        </property>
       </widget>
      </item>
-     <item row="12" column="2">
-      <widget class="QSpinBox" name="spinBox_EndLayer">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </item>
-     <item row="11" column="2">
-      <widget class="QLabel" name="label_2">
+     <item row="4" column="4">
+      <widget class="QPushButton" name="pushButton_SliceZoomOut">
        <property name="text">
-        <string>End Line Index</string>
+        <string>- ZoomOut</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QPushButton" name="pushButton_Flatten">
-       <property name="styleSheet">
-        <string notr="true"/>
-       </property>
+     <item row="9" column="4">
+      <widget class="QPushButton" name="pushButton_Vert">
        <property name="text">
-        <string>Process Flatten</string>
+        <string>Flip Vertical</string>
        </property>
       </widget>
      </item>
-     <item row="9" column="3">
-      <widget class="QCheckBox" name="checkBox_ProjStru">
+     <item row="8" column="2">
+      <widget class="QPushButton" name="pushButton_DelTable">
        <property name="text">
-        <string>Stru</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
+        <string>Del</string>
        </property>
       </widget>
      </item>
-     <item row="11" column="0">
-      <widget class="QLabel" name="label">
+     <item row="0" column="3">
+      <widget class="QPushButton" name="pushButton_BatchOpen">
        <property name="text">
-        <string>Start Line Index</string>
+        <string>Open Folder</string>
        </property>
-      </widget>
-     </item>
-     <item row="15" column="0">
-      <widget class="QLabel" name="label_14">
-       <property name="text">
-        <string>Projection group</string>
-       </property>
-      </widget>
-     </item>
-     <item row="20" column="3">
-      <widget class="QCheckBox" name="checkBox_SaveSegVideo">
-       <property name="text">
-        <string>SegVideo</string>
-       </property>
-      </widget>
-     </item>
-     <item row="10" column="6">
-      <widget class="QPushButton" name="pushButton_hori">
-       <property name="text">
-        <string>Flip Horizontal</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0" colspan="6">
-      <widget class="QTabWidget" name="tabWidget">
-       <property name="autoFillBackground">
-        <bool>false</bool>
-       </property>
-       <property name="currentIndex">
-        <number>0</number>
-       </property>
-       <widget class="QWidget" name="tab_5">
-        <attribute name="title">
-         <string>Custom Load</string>
-        </attribute>
-        <widget class="QPushButton" name="pushButton_LoadStru">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>50</y>
-           <width>80</width>
-           <height>27</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Load Stru</string>
-         </property>
-        </widget>
-        <widget class="QPushButton" name="pushButton_LoadFlow">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>80</y>
-           <width>80</width>
-           <height>27</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Load Flow</string>
-         </property>
-        </widget>
-        <widget class="QPushButton" name="pushButton_LoadSeg">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>110</y>
-           <width>80</width>
-           <height>27</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Load Seg</string>
-         </property>
-        </widget>
-        <widget class="QLabel" name="label_16">
-         <property name="geometry">
-          <rect>
-           <x>110</x>
-           <y>100</y>
-           <width>131</width>
-           <height>31</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Image Size:</string>
-         </property>
-        </widget>
-        <widget class="QComboBox" name="comboBox_size">
-         <property name="geometry">
-          <rect>
-           <x>230</x>
-           <y>110</y>
-           <width>181</width>
-           <height>27</height>
-          </rect>
-         </property>
-         <item>
-          <property name="text">
-           <string>6x6 mm</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>12x12 mm</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>3x3 mm</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>N/A</string>
-          </property>
-         </item>
-        </widget>
-        <widget class="QComboBox" name="comboBox_type">
-         <property name="geometry">
-          <rect>
-           <x>230</x>
-           <y>60</y>
-           <width>181</width>
-           <height>27</height>
-          </rect>
-         </property>
-         <item>
-          <property name="text">
-           <string>ZEISS PLEX Elite 9000</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>ZEISS Cirrus 6000</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Intalight DREAM OCT</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>SD-OCT</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>SS-OCT</string>
-          </property>
-         </item>
-        </widget>
-        <widget class="QLabel" name="label_19">
-         <property name="geometry">
-          <rect>
-           <x>110</x>
-           <y>60</y>
-           <width>131</width>
-           <height>31</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Imaging Device:</string>
-         </property>
-        </widget>
-        <widget class="QPushButton" name="pushButton_SegWizard">
-         <property name="geometry">
-          <rect>
-           <x>10</x>
-           <y>170</y>
-           <width>211</width>
-           <height>27</height>
-          </rect>
-         </property>
-         <property name="text">
-          <string>Layer Segmentation Wizard</string>
-         </property>
-        </widget>
-        <zorder>label_16</zorder>
-        <zorder>label_19</zorder>
-        <zorder>pushButton_LoadStru</zorder>
-        <zorder>pushButton_LoadFlow</zorder>
-        <zorder>pushButton_LoadSeg</zorder>
-        <zorder>comboBox_size</zorder>
-        <zorder>comboBox_type</zorder>
-        <zorder>pushButton_SegWizard</zorder>
-       </widget>
-       <widget class="QWidget" name="tab_6">
-        <attribute name="title">
-         <string>Batch Load</string>
-        </attribute>
-        <layout class="QGridLayout" name="gridLayout_3">
-         <item row="1" column="1">
-          <widget class="QLineEdit" name="lineEdit_FlowPattern">
-           <property name="text">
-            <string>Flow.dcm</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="1">
-          <widget class="QLineEdit" name="lineEdit_StruPattern">
-           <property name="text">
-            <string>Stru.dcm</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="2" rowspan="6">
-          <widget class="QListWidget" name="listWidget_BatchList"/>
-         </item>
-         <item row="2" column="1">
-          <widget class="QLineEdit" name="lineEdit_SegPattern">
-           <property name="text">
-            <string>Seg.npy</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QPushButton" name="pushButton_RunSingle">
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">background-color: rgb(255, 85, 0);</string>
-           </property>
-           <property name="text">
-            <string>Run Single</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
-          <widget class="QPushButton" name="pushButton_RunBatch">
-           <property name="font">
-            <font>
-             <weight>75</weight>
-             <bold>true</bold>
-            </font>
-           </property>
-           <property name="styleSheet">
-            <string notr="true">background-color: rgb(255, 85, 0);</string>
-           </property>
-           <property name="text">
-            <string>Run Batch</string>
-           </property>
-          </widget>
-         </item>
-         <item row="4" column="1">
-          <widget class="QPushButton" name="pushButton_UpdateRule">
-           <property name="text">
-            <string>Update Rule</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </widget>
       </widget>
      </item>
     </layout>
@@ -1138,9 +1511,9 @@
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>1060</y>
+      <y>1080</y>
       <width>301</width>
-      <height>20</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -1150,10 +1523,10 @@
    <widget class="QLabel" name="label_18">
     <property name="geometry">
      <rect>
-      <x>320</x>
-      <y>1060</y>
+      <x>330</x>
+      <y>1080</y>
       <width>131</width>
-      <height>20</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -1163,35 +1536,13 @@
      <bool>true</bool>
     </property>
    </widget>
-   <widget class="QPushButton" name="pushButton_SaveResult">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>1020</y>
-      <width>193</width>
-      <height>23</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">background-color: rgb(255, 85, 0);</string>
-    </property>
-    <property name="text">
-     <string>Save result</string>
-    </property>
-   </widget>
    <widget class="QLabel" name="label_20">
     <property name="geometry">
      <rect>
       <x>450</x>
-      <y>1060</y>
+      <y>1080</y>
       <width>131</width>
-      <height>20</height>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -1208,7 +1559,7 @@
      <x>0</x>
      <y>0</y>
      <width>1765</width>
-     <height>24</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>

@@ -286,8 +286,12 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
             self.send_and_display_the_log(
                 'Load structural file: ' + files)  # send the message
             self.pop_up_alert('Load success')
-            self.radioButton_DisplayStru.setEnabled(
-                True)  # enable the radio button
+
+            # --- FIX STARTS HERE ---
+            self.radioButton_DisplayStru.setEnabled(True)
+            self.radioButton_DisplayStru.setChecked(True)  # Automatically check the box
+            self.display = 'stru'  # Explicitly set the mode
+            # --- FIX ENDS HERE ---
 
             self.filename = self.get_file_name(files)
             img_obj.save_path = files
@@ -314,6 +318,8 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
             self.send_and_display_the_log('Load flow file: ' + files)
             self.pop_up_alert('Load success')
             self.radioButton_DisplayFlow.setEnabled(True)
+            self.radioButton_DisplayFlow.setChecked(True)
+            self.display = 'flow'
 
             # if filename does not exist
             self.filename = self.get_file_name(files)
@@ -527,6 +533,9 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
         '''Reset the maximum range and the first and
         '''
         try:
+            imgs = None  # Initialize as None to prevent "UnboundLocalError"
+
+            # Determine which data to show based on self.display state
             if self.display == 'stru':
                 if img_obj.exist_stru:
                     imgs = img_obj.stru3d
@@ -538,6 +547,23 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
             elif self.display == 'flat_flow':
                 imgs = self.img_flatten_flow
 
+            # AUTO-RECOVERY:
+            # If display is 'none' but we have data, force a default view
+            if imgs is None:
+                if img_obj.exist_stru:
+                    self.display = 'stru'
+                    imgs = img_obj.stru3d
+                    self.radioButton_DisplayStru.setChecked(True)
+                elif img_obj.exist_flow:
+                    self.display = 'flow'
+                    imgs = img_obj.flow3d
+                    self.radioButton_DisplayFlow.setChecked(True)
+
+            # GUARD CLAUSE: If we still have no images, stop here.
+            if imgs is None:
+                return
+
+            # Proceed only if we have valid images
             self.scroll_bar_moved(self.horizontalScrollBar_FastScan, 'fast',
                                   imgs)
             self.scroll_bar_moved(self.horizontalScrollBar_SlowScan, 'slow',
@@ -547,7 +573,7 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
 
             self.scroll_bar_set_range(imgs)
         except Exception as e:
-            print(e)
+            print(f"Error in scroll_bar_reset: {e}")
 
     def scroll_bar_set_range(self, imgs):
         '''set the range of scroll bar based on images
