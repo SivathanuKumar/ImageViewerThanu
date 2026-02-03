@@ -16,13 +16,35 @@ from pathlib import Path
 import qimage2ndarray
 import matplotlib.pyplot as plt
 from datetime import datetime
-import imageio_ffmpeg as io
+import imageio_ffmpeg as ffmpeg
+import io
+from PyQt5 import uic # Required for loading .ui files
+
 #Setup Python Path to find subfolders
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 #Import Global State
 from Utils.data_class import state
 img_obj = state.img_obj
-from UI import design_smooth
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Assuming the .ui file is located at ./UI/design_smooth.ui
+UI_FILE_PATH = os.path.join(current_dir, 'UI', 'design_smooth.ui')
+
+if not os.path.exists(UI_FILE_PATH):
+    raise FileNotFoundError(f"UI file not found at: {UI_FILE_PATH}")
+
+with open(UI_FILE_PATH, 'r', encoding='utf-8') as f:
+    ui_xml = f.read()
+
+# Apply Qt6 -> Qt5 compatibility patch
+ui_xml = ui_xml.replace('Qt::AlignmentFlag::', 'Qt::')
+ui_xml = ui_xml.replace('Qt::Orientation::', 'Qt::')
+ui_xml = ui_xml.replace('Qt::WindowType::', 'Qt::')
+ui_xml = ui_xml.replace('QFrame::Shadow::', 'QFrame::')
+
+f_io = io.StringIO(ui_xml)
+Ui_MainWindow, QtBaseClass = uic.loadUiType(f_io)
+# ---------------------------------------------
+
 from Analysis.SM.layer_seg_parallel import seg_video_parallel, OAC_calculation, seg_video_SD_parallel
 from Analysis.SM.AlternateSegmentation import quick_process_video
 from Analysis.SM.ORL_Segmentation_UNet_SDOCT import ORL_segmentation_UNet_SDOCT
@@ -43,7 +65,32 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 QtWidgets.QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
 
-class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
+class LoadWorker(QThread):
+    """
+    Worker thread to load files in the background without freezing the UI
+    """
+    finished = pyqtSignal(bool, str)  # signal (success_status, message/file_path)
+
+    def __init__(self, img_object, file_path, load_type):
+        super().__init__()
+        self.img_obj = img_object
+        self.file_path = file_path
+        self.load_type = load_type
+
+    def run(self):
+        try:
+            if self.load_type == 'stru':
+                self.img_obj.read_stru_data(self.file_path)
+            elif self.load_type == 'flow':
+                self.img_obj.read_flow_data(self.file_path)
+
+            # Emit success
+            self.finished.emit(True, self.file_path)
+        except Exception as e:
+            # Emit failure with error message
+            self.finished.emit(False, str(e))
+
+class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     """
     main window
     """
@@ -271,59 +318,102 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
         return folder_name
 
     def on_button_clicked_load_stru(self):
-        '''Load the stru file
-        '''
-        print('Start loading')
+        print('Start loading Stru')
         url = self.lineEdit_OpenPath.text()
         files = self.openFileNameDialog(url, 'video')
+
         if not files:
             print('cannot load')
-            self.pop_up_alert('Load failed')
-        else:
-            img_obj.read_stru_data(files)
-            # img_obj = img_obj.stabilize()
-            print(files, ' has been loaded')
-            self.send_and_display_the_log(
-                'Load structural file: ' + files)  # send the message
-            self.pop_up_alert('Load success')
+            return
 
-            # --- FIX STARTS HERE ---
-            self.radioButton_DisplayStru.setEnabled(True)
-            self.radioButton_DisplayStru.setChecked(True)  # Automatically check the box
-            self.display = 'stru'  # Explicitly set the mode
-            # --- FIX ENDS HERE ---
+        # 1. Setup Progress Dialog
+        self.progress_dialog = QProgressDialog("Loading Structural Data... Please Wait.", None, 0, 0, self)
+        self.progress_dialog.setWindowTitle("Loading")
+        self.progress_dialog.setWindowModality(Qt.WindowModal)
+        self.progress_dialog.setCancelButton(None)  # Disable cancel button for safety
+        self.progress_dialog.show()
 
-            self.filename = self.get_file_name(files)
-            img_obj.save_path = files
+        # 2. Setup Background Thread
+        self.loader_thread = LoadWorker(self.img_obj, files, 'stru')
+        self.loader_thread.finished.connect(self.on_stru_load_finished)
+        self.loader_thread.finished.connect(self.progress_dialog.close)  # Close dialog when done
 
-            cwd = str(Path(os.path.dirname(files)))
+        # 3. Start Thread
+        self.loader_thread.start()
 
-            self.scroll_bar_reset()
-            # rewrite the cwd
-            self.lineEdit_OpenPath.setText(cwd)
-            self.lineEdit_SavePath.setText(cwd)
+    def on_stru_load_finished(self, success, result):
+        '''Callback when Stru loading is done'''
+        if not success:
+            self.pop_up_alert(f'Load Error: {result}')
+            return
 
+        files = result  # In success case, result is the filepath
+        print(files, ' has been loaded')
+        self.send_and_display_the_log('Load structural file: ' + files)
+        self.pop_up_alert('Load success')
+
+        # Update UI
+        self.radioButton_DisplayStru.setEnabled(True)
+        self.radioButton_DisplayStru.setChecked(True)
+        self.display = 'stru'
+
+        self.filename = self.get_file_name(files)
+        self.img_obj.save_path = files
+
+        cwd = str(Path(os.path.dirname(files)))
+
+        self.scroll_bar_reset()
+        self.lineEdit_OpenPath.setText(cwd)
+        self.lineEdit_SavePath.setText(cwd)
+
+    # -----------------------------------------------------------
+    # REPLACEMENT: LOAD FLOW
+    # -----------------------------------------------------------
     def on_button_clicked_load_flow(self):
-        print('Start loading')
+        '''Load the flow file with a progress popup'''
+        print('Start loading Flow')
         url = self.lineEdit_OpenPath.text()
         files = self.openFileNameDialog(url, 'video')
+
         if not files:
             print('cannot load')
-            self.pop_up_alert('Load failed')
-        else:
-            img_obj.read_flow_data(files)
-            print(files, ' has been loaded')
+            return
 
-            self.scroll_bar_reset()
-            self.send_and_display_the_log('Load flow file: ' + files)
-            self.pop_up_alert('Load success')
-            self.radioButton_DisplayFlow.setEnabled(True)
-            self.radioButton_DisplayFlow.setChecked(True)
-            self.display = 'flow'
+        # 1. Setup Progress Dialog
+        self.progress_dialog = QProgressDialog("Loading Flow Data... Please Wait.", None, 0, 0, self)
+        self.progress_dialog.setWindowTitle("Loading")
+        self.progress_dialog.setWindowModality(Qt.WindowModal)
+        self.progress_dialog.setCancelButton(None)
+        self.progress_dialog.show()
 
-            # if filename does not exist
-            self.filename = self.get_file_name(files)
-            img_obj.save_path = files
+        # 2. Setup Background Thread
+        self.loader_thread = LoadWorker(self.img_obj, files, 'flow')
+        self.loader_thread.finished.connect(self.on_flow_load_finished)
+        self.loader_thread.finished.connect(self.progress_dialog.close)
+
+        # 3. Start Thread
+        self.loader_thread.start()
+
+    def on_flow_load_finished(self, success, result):
+        '''Callback when Flow loading is done'''
+        if not success:
+            self.pop_up_alert(f'Load Error: {result}')
+            return
+
+        files = result
+        print(files, ' has been loaded')
+        self.scroll_bar_reset()
+        self.send_and_display_the_log('Load flow file: ' + files)
+        self.pop_up_alert('Load success')
+
+        # Update UI
+        self.radioButton_DisplayFlow.setEnabled(True)
+        self.radioButton_DisplayFlow.setChecked(True)
+        self.display = 'flow'
+
+        # if filename does not exist (flow loaded first)
+        self.filename = self.get_file_name(files)
+        self.img_obj.save_path = files
 
     def on_button_clicked_load_seg(self):
         print('Start loading')
@@ -407,15 +497,8 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
                     'Flatten flow image does not exist')
 
     def radio_seg_mode_set_range(self):
-        """Set the range the of the
-        :return:
-        """
-        if self.radioButton_Skin.isChecked():
-            self.spinBox_RetinaUpperOffset.setProperty("value", 50)
-            self.spinBox_RetinaLowerOffset.setProperty("value", 1)
-        elif self.radioButton_Eye.isChecked():
-            self.spinBox_RetinaUpperOffset.setProperty("value", 200)
-            self.spinBox_RetinaLowerOffset.setProperty("value", 50)
+        self.spinBox_RetinaUpperOffset.setProperty("value", 200)
+        self.spinBox_RetinaLowerOffset.setProperty("value", 50)
 
     def on_button_do_subpixel(self):
         """
@@ -800,9 +883,9 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
             row_num)
 
         # for eye image, rot90 and flip
-        if self.radioButton_Skin.isChecked():
-            rot_status = False
-        elif self.radioButton_SDOCT.isChecked():
+        #if self.radioButton_Skin.isChecked():
+        #    rot_status = False
+        if self.radioButton_SDOCT.isChecked():
             rot_status = True
         elif self.radioButton_ORL.isChecked():
             rot_status = False
@@ -851,9 +934,9 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
             print('projeciton method: ', proj_method)
 
             # set parameters
-            if self.radioButton_Skin.isChecked():
-                rot_status = False
-            elif self.radioButton_SDOCT.isChecked():
+            #if self.radioButton_Skin.isChecked():
+            #    rot_status = False
+            if self.radioButton_SDOCT.isChecked():
                 rot_status = True
             elif self.radioButton_Eye.isChecked():
                 rot_status = True
@@ -1393,10 +1476,10 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
             for i in range(0, self.proj_data.shape[0]):
                 file_name = os.path.join(url, 'projs_stru_' + str(i) + '.png')
                 if not (np.sum(~np.isnan(self.projs_stru[:, :, i])) == 0):
-                    io.imsave(file_name, (norm_c(self.projs_stru[:, :, i].T)).T)
+                    ffmpeg.imsave(file_name, (norm_c(self.projs_stru[:, :, i].T)).T)
                 file_name = os.path.join(url, 'projs_flow_' + str(i) + '.png')
                 if not (np.sum(~np.isnan(self.projs_flow[:, :, i])) == 0):
-                    io.imsave(file_name, (norm_c(self.projs_flow[:, :, i].T)).T)
+                    ffmpeg.imsave(file_name, (norm_c(self.projs_flow[:, :, i].T)).T)
 
             self.proj_data.to_csv(os.path.join(url, 'proj_settings.csv'))
         except Exception as e:
@@ -1632,9 +1715,9 @@ class MainWindow(QtWidgets.QMainWindow, design_smooth.Ui_MainWindow):
                     img_obj.auto_seg_stru(auto_range=True, retina_lower_offset=lower_offset,
                                           retina_upper_offset=upper_offset, mode='eye', better_BM=False)
 
-            elif self.radioButton_Skin.isChecked()== True:
-                img_obj.auto_seg_stru(auto_range=True, retina_lower_offset=lower_offset,
-                                      retina_upper_offset=upper_offset, mode='skin', better_BM=False)
+            #elif self.radioButton_Skin.isChecked()== True:
+            #    img_obj.auto_seg_stru(auto_range=True, retina_lower_offset=lower_offset,
+            #                          retina_upper_offset=upper_offset, mode='skin', better_BM=False)
 
         else:
             img_obj.read_seg_layers(seg_file)  # read the segmentation file

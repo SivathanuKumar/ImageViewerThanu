@@ -558,39 +558,155 @@ class Oct3Dimage:
         
         ds.PixelData = pixel_array.tostring()
         ds.save_as(filename)
-        print('The file ', filename, ' has been saved.')    
-        
-        
+        print('The file ', filename, ' has been saved.')
+
+    # -------------------------------------------------------------------------
+    # OPTIMIZED OAC CALCULATION (Optical Attenuation Coefficient)
+    # -------------------------------------------------------------------------
+    def OAC_calculation(self, img=None, chunk_size=20):
+        """
+        Calculate OAC (Optical Attenuation Coefficient) volume using Structural Data.
+        Optimized for memory usage by processing in chunks (Frames).
+        Formula: JLin = OCTL[:-1] / (CumulativeTrapz(Flip(OCTL)) * 2 * delta_z)
+        """
+        import scipy.integrate as integrate
+
+        # Default to structural data if nothing passed
+        if img is None:
+            if self.exist_stru:
+                img = self.stru3d
+            else:
+                print("Error: OAC requires structural data.")
+                return None
+
+        # Dimensions
+        depth, width, frames = img.shape
+
+        # Result container (Depth-1 because integration reduces dimension by 1)
+        JLin_vol = np.zeros((depth - 1, width, frames), dtype=np.float32)
+
+        print(f"Calculating OAC Volume in chunks of {chunk_size} frames...")
+
+        # Process in chunks to save RAM
+        for i in range(0, frames, chunk_size):
+            # Define chunk boundaries
+            f_start = i
+            f_end = min(i + chunk_size, frames)
+
+            # 1. Extract Chunk & Convert to Float32
+            # Shape: [Depth, Width, Chunk_Frames]
+            chunk = img[:, :, f_start:f_end].astype(np.float32)
+
+            # 2. Calculate OCTL (Linear OCT)
+            # OCTL = ((10 ** (img / 80)) - 1) / 7.1
+            # We use in-place operations to keep memory low
+            chunk /= 80.0
+            np.power(10.0, chunk, out=chunk)
+            chunk -= 1.0
+            chunk /= 7.1
+            # 'chunk' is now 'OCTL'
+
+            # 3. Calculate M (Cumulative Trapezoid Integration)
+            # Flip dimensions for integration from bottom-up
+            # Note: cumtrapz reduces axis 0 size by 1
+            M = integrate.cumulative_trapezoid(chunk[::-1, ...], axis=0)
+            M = M[::-1, ...]  # Flip back
+
+            # 4. Calculate JLin
+            # Formula: OCTL / (M * 2 * (3 / Depth))
+            # Note: OCTL must be sliced [:-1] to match M's new shape
+
+            pixel_size_z = 3.0 / depth
+            denominator = M * 2.0 * pixel_size_z
+
+            # Avoid divide by zero
+            denominator[denominator == 0] = 1e-9
+
+            JLin_chunk = chunk[:-1, ...] / denominator
+
+            # Store result
+            JLin_vol[:, :, f_start:f_end] = JLin_chunk
+
+            # Cleanup
+            del chunk
+            del M
+            del JLin_chunk
+
+        print("OAC Calculation Complete.")
+        return JLin_vol
+
+    def get_oac_projection(self, start_layer, end_layer):
+        """
+        Helper to get the 2D OAC Map (Mean Projection) between layers.
+        """
+        # 1. Calculate the full OAC Volume
+        oac_vol = self.OAC_calculation()  # Uses self.stru3d by default
+
+        if oac_vol is None: return None
+
+        # 2. Extract Slab (Adjusting for the fact OAC vol is 1 pixel shorter)
+        # We reuse the existing slab extraction logic logic, but applied to OAC vol
+        # Note: We must be careful about indices since oac_vol is depth-1
+
+        # Simple slab extraction for OAC (Custom loop to handle the depth difference)
+        max_d, w, f = oac_vol.shape
+        oac_map = np.zeros((w, f), dtype=np.float32)
+
+        layers = self.layers
+
+        for i in range(w):
+            for j in range(f):
+                # Get layer boundaries
+                z1 = int(layers[i, j, start_layer])
+                z2 = int(layers[i, j, end_layer])
+
+                # Clip to volume bounds
+                if z1 < 0: z1 = 0
+                if z2 > max_d: z2 = max_d
+                if z1 >= z2: z1 = z2 - 1
+
+                if z2 > z1:
+                    col = oac_vol[z1:z2, i, j]
+                    oac_map[i, j] = np.mean(col)
+
+        # Normalize map for visualization
+        if np.max(oac_map) > 0:
+            oac_map = oac_map / np.max(oac_map)
+
+        return oac_map
     def _save_dicom_file_temp(self, data_save, file_name_out='out.dcm'):
         """
         data_save: [width, depth, frame]
-        load a matlab dicom file from the local drive, then rewrite the pixel data
-        will be replaced in the future
+        Uses a template 'dicom_format.dcm' to save data.
+        FIXED: Looks for template in the same folder as this script.
         """
-        
-        cwd = os.getcwd()
-        print('cwd==', cwd)
-        filename = os.path.join(cwd, 'dicom_format.dcm')
-        #filename = './dicom_format.dcm' # the standard dicom file
+        # Look for the template in the same directory as THIS python file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        filename = os.path.join(script_dir, 'dicom_format.dcm')
+
+        if not os.path.exists(filename):
+            print(f"ERROR: Template {filename} not found!")
+            return
+
         ds = pydicom.dcmread(filename)
-        
+
         # get the pixel information into a numpy array
-        data = ds.pixel_array
-        
-        data_save = np.uint16(np.rollaxis(data_save, 1, 0))  # force convert to u16 bit
-        
+        # data = ds.pixel_array # Not strictly needed if we overwrite
+
+        # Force convert to u16 bit and adjust axes if necessary
+        # Assuming input is [Depth, Width, Frames] -> Dicom usually [Frames, Depth, Width]
+        # Adjust logic below to match your specific orientation needs
+        data_save = np.uint16(np.rollaxis(data_save, 2, 0))
+
         # copy the data back to the original data set
-        ds.PixelData = data_save.tobytes('F')
+        ds.PixelData = data_save.tobytes()  # 'F' order removed for compatibility, standard C order usually safer
+
         # update the information regarding the shape of the data array
-        ds.Columns, ds.Rows, ds.NumberOfFrames = data_save.shape
-        
+        ds.NumberOfFrames, ds.Rows, ds.Columns = data_save.shape
+
         ds.SOPInstanceUID = pydicom.uid.generate_uid()
         ds.PatientID = 'None'
-        
-        # print the image information given in the dataset
-        print('The information of the data set after downsampling: \n')
-        print(ds)
-        
+
         pydicom.filewriter.dcmwrite(file_name_out, ds)
         print('The file ', file_name_out, ' has been saved.')
 
@@ -874,45 +990,49 @@ class Oct3Dimage:
             orientation: 1 for fast scan preview, 2 for slow scan preview
         '''
         self.__plot_slice_layers(self.flow3d, slice_num, orientation)
-        
+
     def save_seg_video(self, step=10, file_name='lines.avi'):
-        '''Save the video with lines
-        Args:
-            step: the step to plot the B-scans
-            file_name = name of the video
-        '''
+        '''Save the video with lines (Fixed for Matplotlib 3.8+)'''
         assert (self.exist_stru), 'stru image does not exist'
         assert (self.exist_seg), 'seg file does not exist'
-        writer = get_writer(file_name, fps=30, macro_block_size=None, 
-                            quality=10, codec='rawvideo')
 
-        # get the aspectratio of the image
+        # Use imageio writer
+        import imageio
+        writer = imageio.get_writer(file_name, fps=30, macro_block_size=None,
+                                    quality=10, codec='rawvideo')
+
+        # Calculate aspect ratio
         img_h = 6
-        img_w = (img_h*self.stru3d.shape[1]/self.stru3d.shape[0])
+        img_w = (img_h * self.stru3d.shape[1] / self.stru3d.shape[0])
 
-        # loop plot 
+        print(f"Saving Seg Video to {file_name}...")
+
+        # Loop plot
         for i in range(0, self.img_framenum, step):
-        #    plt.figure(figsize=(3,7))
-            fig = plt.figure(figsize = (img_w, img_h), dpi=200)
-        #    plt.ioff()
-            plt.title('FrameNum='+str(i)) 
-            plt.imshow(self.stru3d[:,:,i], cmap='gray', aspect='equal')
+            fig = plt.figure(figsize=(img_w, img_h), dpi=200)
+            plt.title('FrameNum=' + str(i))
+            plt.imshow(self.stru3d[:, :, i], cmap='gray', aspect='equal')
             plt.axis('off')
+
+            # Plot all layers
             for j in range(0, self.layers.shape[2]):
-                plt.plot(self.layers[:,i,j], label =str(j))
+                plt.plot(self.layers[:, i, j], label=str(j))
             plt.legend()
-            #plt.tight_layout()
-            
-            # get the buffer
-            #fig = plt.gcf()
+
+            # --- FIX: Use buffer_rgba ---
             fig.canvas.draw()
-            figData = np.frombuffer(fig.canvas.tostring_rgb(), dtype = np.uint8)
-            figHandleSize = fig.canvas.get_width_height()[::-1] + (3,)
-            fData = figData.reshape(figHandleSize)  
-            writer.append_data(fData)
-            plt.close('all')
-        #    plt.pause(0.001)  
-        writer.close()  
+            # Get RGBA buffer
+            data = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
+            w, h = fig.canvas.get_width_height()
+
+            # Reshape and drop Alpha channel to get RGB (h, w, 3)
+            im_array = data.reshape((h, w, 4))[:, :, :3]
+
+            writer.append_data(im_array)
+            plt.close(fig)  # Important: Close fig to save memory
+
+        writer.close()
+        print("Seg Video Saved.")
     
     #%%
     def thickness_map(self, start, end, smooth=True):
@@ -1045,15 +1165,18 @@ class Oct3Dimage:
         Args:
             image: image with shape (depth, width, frames_num)
         Return: projection image
-        '''      
-        # make the sum projection image of layers
-        projs = np.zeros((image.shape[1], image.shape[2]))
+        '''
+        # 1. Calculate the raw sum (This creates huge numbers, e.g., 5000+)
         projs = np.nansum(image, axis=0)
-        #file_name_out = file_name  + '_sum.png' 
-        proj_img = projs/projs.max()
-    #    imwrite(file_name_out, proj_img)            
-        #print('Sum projection complete')
-        return projs
+
+        # 2. Normalize to 0.0 - 1.0 range
+        if projs.max() > 0:
+            proj_img = projs / projs.max()
+        else:
+            proj_img = projs
+
+        # 3. RETURN THE NORMALIZED IMAGE (Fix: Return proj_img, not projs)
+        return proj_img
     
     def _sum_mean_proj_layers(self, image):
         '''Make the mean projection of the layers of image
@@ -1129,7 +1252,7 @@ class Oct3Dimage:
     #    imwrite(file_name_out, proj_img)
         #print('Sum projection complete')
         return projs
-    
+
     def _min_proj_layers(self, image):
         '''Make the maxinum projection of the layers of image
         Args:
@@ -1137,14 +1260,14 @@ class Oct3Dimage:
         Return: projection image
         '''
         # make the maxinum projection image of layers
-        projs = np.zeros((image.shape[1], image.shape[2])) 
+        projs = np.zeros((image.shape[1], image.shape[2]))
         projs = image.min(axis=0)
-        #file_name_out = file_name  + '_sum.png' 
-        proj_img = projs/projs.max()
-    #    imwrite(file_name_out, proj_img)
-        #print('Sum projection complete')
+        # file_name_out = file_name  + '_sum.png'
+        proj_img = projs / projs.max()
+        #    imwrite(file_name_out, proj_img)
+        # print('Sum projection complete')
         return projs
-    
+
     def _min_mean_proj_layers(self, image, select_num=5):
         '''Make the mean of 5 maxinum projection of the layers of image
         Args:
@@ -1153,16 +1276,16 @@ class Oct3Dimage:
         Return: projection images
         '''
         # make the maxinum projection image of layers
-        projs = np.zeros((image.shape[1], image.shape[2])) 
-    
+        projs = np.zeros((image.shape[1], image.shape[2]))
+
         # sort with descending order
         img_sort = np.sort(image, axis=0)
         projs = np.mean(img_sort[0:select_num, :, :], axis=0)
-        
-        #file_name_out = file_name  + '_sum.png' 
-        proj_img = projs/projs.max()
-    #    imwrite(file_name_out, proj_img)
-        #print('Sum projection complete')
+
+        # file_name_out = file_name  + '_sum.png'
+        proj_img = projs / projs.max()
+        #    imwrite(file_name_out, proj_img)
+        # print('Sum projection complete')
         return projs
     
     def img_constrat_change(self, img, low_rg=2, high_rg=99.5):
