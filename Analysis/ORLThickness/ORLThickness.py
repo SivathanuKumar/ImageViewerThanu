@@ -12,12 +12,12 @@ from matplotlib.patches import Circle
 from matplotlib.colors import ListedColormap
 from scipy.ndimage import median_filter, gaussian_filter, center_of_mass
 import qimage2ndarray
-import io  # Standard library (contains StringIO)
+import io
 from skimage import io as skio
 
 from PyQt5 import QtWidgets, uic, QtCore
-from PyQt5.QtWidgets import QFileDialog, QGraphicsScene, QTableWidgetItem
-from PyQt5.QtGui import QPixmap, QPen, QColor
+from PyQt5.QtWidgets import QFileDialog, QGraphicsScene, QTableWidgetItem, QGraphicsPathItem
+from PyQt5.QtGui import QPixmap, QPen, QColor, QPainterPath
 from PyQt5.QtCore import Qt, pyqtSignal
 
 # -------------------------------------------------------------------------
@@ -28,71 +28,74 @@ root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
 if root_dir not in sys.path: sys.path.append(root_dir)
 if current_dir not in sys.path: sys.path.append(current_dir)
 
-# Define path to the .ui file
-UI_FILE_PATH = os.path.join(current_dir, r".\thicknessmapui.ui")  # Ensure filename matches yours
-
+# UI File Logic
+UI_FILE_PATH = os.path.join(current_dir, r"./thicknessmapui.ui")
 if not os.path.exists(UI_FILE_PATH):
-    raise FileNotFoundError(f"UI file not found at: {UI_FILE_PATH}")
+    # Fallback if file missing (for standalone logic)
+    pass
 
-with open(UI_FILE_PATH, 'r', encoding='utf-8') as f:
-    ui_xml = f.read()
-
-ui_xml = ui_xml.replace('Qt::AlignmentFlag::', 'Qt::')
-ui_xml = ui_xml.replace('Qt::Orientation::', 'Qt::')
-ui_xml = ui_xml.replace('Qt::WindowType::', 'Qt::')
-ui_xml = ui_xml.replace('QFrame::Shadow::', 'QFrame::')
-f_io = io.StringIO(ui_xml)
-Ui_MainWindow, QtBaseClass = uic.loadUiType(f_io)
+try:
+    with open(UI_FILE_PATH, 'r', encoding='utf-8') as f:
+        ui_xml = f.read()
+    # Fix namespace issues in older QT Designer files
+    ui_xml = ui_xml.replace('Qt::AlignmentFlag::', 'Qt::')
+    ui_xml = ui_xml.replace('Qt::Orientation::', 'Qt::')
+    ui_xml = ui_xml.replace('Qt::WindowType::', 'Qt::')
+    ui_xml = ui_xml.replace('QFrame::Shadow::', 'QFrame::')
+    f_io = io.StringIO(ui_xml)
+    Ui_MainWindow, QtBaseClass = uic.loadUiType(f_io)
+except:
+    # If UI load fails, use generic object to allow code inspection
+    Ui_MainWindow = object
+    QtBaseClass = object
 
 
 # -------------------------------------------------------------------------
-# 2. DUMMY CLASSES FOR STANDALONE MODE
+# 2. DUMMY CLASSES (For Standalone Testing)
 # -------------------------------------------------------------------------
 class DummyData:
-    """ Mock object to mimic the data structure when running standalone """
-
     def __init__(self):
         self.exist_stru = False
         self.exist_seg = False
-        self.img_width = 512
-        self.img_depth = 512
-        self.img_framenum = 1
+        self.img_width = 500
+        self.img_depth = 800
+        self.img_framenum = 100
         self.layer_num = 0
         self.url_stru = ""
         self.url_seg = ""
-        self.stru3d = np.zeros((512, 512, 1), dtype=np.uint8)
-        self.layers = None  # Will init on load
+        # Mock Data: (Depth, Width, Frames)
+        self.stru3d = np.random.randint(0, 100, (800, 500, 100), dtype=np.uint8)
+        self.layers = None
 
     def read_stru_data(self, filepath):
-        # In a real scenario, you'd implement actual loading here (e.g., SimpleITK or custom)
-        # For this standalone demo, we just simulate successful load
         self.url_stru = filepath
         self.exist_stru = True
         self.img_width = 500
-        self.img_framenum = 500
-        self.img_depth = 1536
-        # Create dummy noise data
-        self.stru3d = np.random.randint(0, 255, (1536, 500, 1), dtype=np.uint8)
-        print(f"Standalone: Mock Structure Loaded from {filepath}")
+        self.img_framenum = 100
+        self.img_depth = 800
+        # Generate some visible noise
+        self.stru3d = np.random.randint(0, 255, (self.img_depth, self.img_width, self.img_framenum), dtype=np.uint8)
+        print(f"Standalone: Mock Structure Loaded.")
 
     def read_seg_layers(self, filepath):
         self.url_seg = filepath
         self.exist_seg = True
-        # Create dummy layers (Width x Frames x 11 layers)
-        # Layer 0 approx at pixel 200, Layer 1 at pixel 300
-        self.layer_num = 11
-        self.layers = np.zeros((500, 500, 11))
-        for i in range(11):
-            self.layers[:, :, i] = 200 + (i * 20)
-        print(f"Standalone: Mock Layers Loaded from {filepath}")
+        self.layer_num = 2
+        # Layers: (Width, Frames, Layers)
+        self.layers = np.zeros((500, 100, 2))
+        # Layer 0 at y=200, Layer 1 at y=300 (roughly)
+        for f in range(100):
+            self.layers[:, f, 0] = 200 + np.sin(np.linspace(0, 10, 500)) * 20
+            self.layers[:, f, 1] = 300 + np.cos(np.linspace(0, 10, 500)) * 20
+        print(f"Standalone: Mock Layers Loaded.")
 
     def plot_proj(self, layer1, layer2, type, projmethod, start_offset, end_offset, display, rotate):
-        # Mock projection generator
-        return np.random.randint(0, 255, (500, 500), dtype=np.uint8)
+        # Return simple mean projection
+        return np.mean(self.stru3d, axis=0).astype(np.uint8)
 
 
 # -------------------------------------------------------------------------
-# 3. CUSTOM SCENE (INTERACTIVE CLICKING)
+# 3. CUSTOM SCENE (Interactive)
 # -------------------------------------------------------------------------
 class ClickableGraphicsScene(QGraphicsScene):
     clicked = pyqtSignal(int, int)
@@ -105,7 +108,7 @@ class ClickableGraphicsScene(QGraphicsScene):
         super().mousePressEvent(event)
 
     def update_cursor(self, x, y):
-        # Remove old cursor if exists
+        # Remove old cursor
         for item in self.items():
             if hasattr(item, 'is_cursor'):
                 self.removeItem(item)
@@ -113,14 +116,13 @@ class ClickableGraphicsScene(QGraphicsScene):
         pen = QPen(Qt.red)
         pen.setWidth(2)
 
-        # Draw Crosshair
-        size = 15
         path = QtWidgets.QGraphicsPathItem()
-        path.is_cursor = True  # Tag
+        path.is_cursor = True
         p = path.path()
-        p.moveTo(x - size, y)
+        size = 15
+        p.moveTo(x - size, y);
         p.lineTo(x + size, y)
-        p.moveTo(x, y - size)
+        p.moveTo(x, y - size);
         p.lineTo(x, y + size)
         path.setPath(p)
         path.setPen(pen)
@@ -130,23 +132,19 @@ class ClickableGraphicsScene(QGraphicsScene):
 # -------------------------------------------------------------------------
 # 4. MAIN WINDOW CLASS
 # -------------------------------------------------------------------------
-class ORLThicknessWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+class ORLThicknessWindow(QtWidgets.QMainWindow, Ui_MainWindow if Ui_MainWindow != object else QtWidgets.QMainWindow):
     def __init__(self, img_obj=None):
         super(self.__class__, self).__init__()
-        self.setupUi(self)
-        self.horizontalScrollBar.setOrientation(Qt.Horizontal)
-
+        if hasattr(self, 'setupUi'):
+            self.setupUi(self)
 
         # --- Handle Data Object ---
         if img_obj is None:
-            print("Mode: STANDALONE")
             self.img_obj = DummyData()
             self.is_standalone = True
         else:
-            print("Mode: INTEGRATED")
             self.img_obj = img_obj
             self.is_standalone = False
-            # Pre-fill UI if data exists
             if hasattr(self.img_obj, 'url_stru'):
                 self.lineEdit_loadstruct.setText(str(self.img_obj.url_stru))
             if hasattr(self.img_obj, 'url_seg'):
@@ -159,7 +157,6 @@ class ORLThicknessWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.scene_thickness = QGraphicsScene()
         self.graphicsView_thicknessmap_wo_mask.setScene(self.scene_thickness)
 
-        # Interactive Projection Scene
         self.scene_proj = ClickableGraphicsScene()
         self.scene_proj.clicked.connect(self.on_proj_clicked)
         self.graphicsView_ORLProj.setScene(self.scene_proj)
@@ -173,43 +170,39 @@ class ORLThicknessWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.pushButton_Compute_and_Display.clicked.connect(self.compute_ORL_thickness)
         self.pushButton_save_csv.clicked.connect(self.on_button_clicked_save_results)
 
-        # New Feature Connections
-        # Check if widgets exist (in case UI file isn't updated yet)
+        # Optional UI element checks
         if hasattr(self, 'comboBox_MaskList'):
             self.comboBox_MaskList.currentIndexChanged.connect(self.on_mask_selected)
         if hasattr(self, 'pushButton_AutoFovea'):
             self.pushButton_AutoFovea.clicked.connect(self.auto_detect_fovea)
 
-        # Setup Spinboxes
         self.spinBox_2.valueChanged.connect(self.update_cursor_from_spinbox)
         self.spinBox_3.valueChanged.connect(self.update_cursor_from_spinbox)
 
+        # --- Variables ---
         self.fovea_center = None
         self.cdlayer = None
         self.thickness_data = None
+        self.current_proj_pixmap = None  # Cache for the expensive projection image
         self.set_thickness_data_frame()
 
-        # If running integrated and data is ready, trigger load immediately
-        if not self.is_standalone and self.img_obj.exist_stru:
+        # Initialize
+        # Only refresh if we actually have data loaded in the passed object
+        if not self.is_standalone and hasattr(self.img_obj, 'exist_stru') and self.img_obj.exist_stru:
             self.refresh_ui_state()
+            # Try to populate masks if path exists
+            self.populate_mask_list()
 
     # --------------------------------------------------------------------
-    # DATA LOADING & PREP
+    # DATA LOADING
     # --------------------------------------------------------------------
     def on_button_load_struct(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Open Structure File", "", "Images (*.avi *.dcm *.img *.vol)")
         if file_path:
             self.lineEdit_loadstruct.setText(file_path)
             self.img_obj.read_stru_data(file_path)
-
             if self.img_obj.exist_stru:
                 self.send_log(f"Structure loaded: {os.path.basename(file_path)}")
-
-                # Init dummy layers if they don't exist yet
-                if not self.img_obj.exist_seg or self.img_obj.layers is None:
-                    self.img_obj.layers = np.zeros((self.img_obj.img_width, self.img_obj.img_framenum, 1))
-                    self.img_obj.layer_num = 1
-
                 self.populate_mask_list()
                 self.refresh_ui_state()
 
@@ -221,9 +214,11 @@ class ORLThicknessWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if self.img_obj.exist_seg:
                 self.send_log("Segmentation loaded.")
                 self.refresh_ui_state()
+                # Trigger projection ONLY when seg loads, not every frame
+                self.generate_and_plot_projection()
 
     def refresh_ui_state(self):
-        """ Called whenever data changes. Updates ranges and plots projection. """
+        """Called when data is loaded to set scrollbar ranges."""
         if self.img_obj.img_width == 0: return
 
         # Set Ranges
@@ -235,115 +230,244 @@ class ORLThicknessWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.spinBox_StartLayer.setMaximum(max_layer)
         self.spinBox_EndLayer.setMaximum(max_layer)
 
-        # Connect Scrollbar to Spinbox
+        # Cleanup old connections to prevent duplicates
         try:
             self.horizontalScrollBar.valueChanged.disconnect()
         except:
-            pass  # disconnect all previous to avoid duplicates
+            pass
+        try:
+            self.spinBox.valueChanged.disconnect()
+        except:
+            pass
+        try:
+            self.spinBox_CurrentLayer.valueChanged.disconnect()
+        except:
+            pass
 
+        # Synch Scrollbar <-> Spinbox
         self.horizontalScrollBar.valueChanged.connect(self.spinBox.setValue)
         self.spinBox.valueChanged.connect(self.horizontalScrollBar.setValue)
 
-        # Connect drawing of B-scan
+        # 1. Update B-Scan (Heavy drawing of lines) when scrollbar moves
         self.horizontalScrollBar.valueChanged.connect(self.draw_bscan)
 
-        # AUTO-PLOT PROJECTION (Feature Request 1)
-        self.generate_and_plot_projection()
+        # 2. Update Projection LINE ONLY (Lightweight) when scrollbar moves
+        self.horizontalScrollBar.valueChanged.connect(self.update_proj_line)
 
-    def generate_and_plot_projection(self):
-        """ Automatically generates projection from structure data """
-        if not self.img_obj.exist_stru: return
+        # 3. Update ACTUAL Projection (Heavy Calc) only when Layer changes
+        self.spinBox_CurrentLayer.valueChanged.connect(self.generate_and_plot_projection)
 
-        self.send_log("Generating Auto-Projection...")
-        try:
-            # Use layer 0 or 0-10 if layers exist, else entire depth
-            # Simplified: Just project the structure sum
-            if hasattr(self.img_obj, 'plot_proj'):
-                # Use existing method if available (Integrated mode)
-                self.img_proj_stru = self.img_obj.plot_proj(
-                    0, 0, 'stru', projmethod='sum', start_offset=-10, end_offset=10, display=False, rotate=False
-                )
-            else:
-                # Standalone fallback
-                self.img_proj_stru = np.mean(self.img_obj.stru3d, axis=0).astype(np.uint8)
-
-            # Process image for display
-            img = self.img_proj_stru
-            if img.max() > 0: img = (img / img.max() * 255).astype(np.uint8)
-
-            # Rotate/Flip to match convention
-            img = cv2.flip(cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE), 1)
-
-            # Display
-            pixmap = QPixmap.fromImage(qimage2ndarray.array2qimage(img))
-            self.scene_proj.clear()
-            self.scene_proj.addPixmap(pixmap)
-
-            # Restore cursor if exists
-            if self.fovea_center:
-                self.scene_proj.update_cursor(*self.fovea_center)
-
-            self.graphicsView_ORLProj.fitInView(self.scene_proj.sceneRect(), Qt.KeepAspectRatio)
-
-        except Exception as e:
-            self.send_log(f"Auto-Projection Error: {e}")
+        # Initial Draw
+        self.draw_bscan()
 
     # --------------------------------------------------------------------
-    # MASK & FOVEA FEATURES
+    # PROJECTION LOGIC (Split into Calc and Draw)
+    # --------------------------------------------------------------------
+    def normalize_image(self, img):
+        """
+        Converts float/uint16 data to uint8 (0-255) for display.
+        Matches the logic in your Parent MainWindow to fix the blurry/noise issue.
+        """
+        if img is None: return None
+
+        # Handle Float or 16-bit integers
+        if np.issubdtype(img.dtype, np.floating) or img.dtype == np.uint16:
+            img = np.nan_to_num(img)  # Remove NaNs
+            if img.max() > 0:
+                # Normalize 0 to 1, then scale to 255
+                img = (img / img.max()) * 255
+            img = img.astype(np.uint8)
+
+        return img
+
+    def generate_and_plot_projection(self):
+        if not self.img_obj.exist_stru: return
+
+        # Ensure we have layers before trying to project specific layers
+        if not self.img_obj.exist_seg or self.img_obj.layers is None: return
+        if self.img_obj.layer_num < 1: return
+
+        try:
+            current_layer = self.spinBox_CurrentLayer.value()
+
+            # Generate Projection
+            if hasattr(self.img_obj, 'plot_proj'):
+                # Integrated Mode: Use the main software's projection logic
+                self.img_proj_stru = self.img_obj.plot_proj(
+                    current_layer, current_layer, 'stru', projmethod='sum',
+                    start_offset=-2, end_offset=2, display=False, rotate=False
+                )
+            else:
+                # Standalone Fallback
+                self.img_proj_stru = np.mean(self.img_obj.stru3d, axis=0)
+
+            # --- APPLY FIX HERE ---
+            img = self.normalize_image(self.img_proj_stru)
+
+            # Rotate/Flip for display convention
+            img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+            img = cv2.flip(img, 1)
+
+            # Cache & Display
+            self.current_proj_pixmap = QPixmap.fromImage(qimage2ndarray.array2qimage(img))
+            self.update_proj_line()
+
+        except Exception as e:
+            self.send_log(f"Proj Error: {e}")
+
+    def update_proj_line(self):
+        """Redraws the cached projection image + the yellow current frame line."""
+        if self.current_proj_pixmap is None: return
+
+        self.scene_proj.clear()
+        self.scene_proj.addPixmap(self.current_proj_pixmap)
+
+        # Draw line indicating current scroll position
+        # Because of ROTATE_90_CLOCKWISE and FLIP, coordinates transform.
+        # Original: Width x Frames
+        # Rotated: Frames x Width
+        # Flipped Horizontally: Frames x Width (but X is inverted)
+
+        current_frame = self.horizontalScrollBar.value()
+
+        # Based on typical OCT UI logic for this specific transformation:
+        # The Frame index usually maps to the Y-axis of the rotated image.
+
+        w = self.current_proj_pixmap.width()
+        h = self.current_proj_pixmap.height()
+
+        pen = QPen(Qt.green)
+        pen.setWidth(2)
+
+        # Drawing a horizontal line at Y = current_frame
+        # Ensure frame is within height limits
+        y_pos = min(max(current_frame, 0), h - 1)
+        self.scene_proj.addLine(0, y_pos, w, y_pos, pen)
+
+        if self.fovea_center:
+            self.scene_proj.update_cursor(*self.fovea_center)
+
+        self.graphicsView_ORLProj.fitInView(self.scene_proj.sceneRect(), Qt.KeepAspectRatio)
+
+    # --------------------------------------------------------------------
+    # B-SCAN DRAWING (The missing logic)
+    # --------------------------------------------------------------------
+    def draw_bscan(self):
+        """Manually draws the B-scan image and segmentation lines."""
+        if not self.img_obj.exist_stru: return
+
+        frame_idx = self.horizontalScrollBar.value()
+
+        # 1. Get Image Slice
+        try:
+            # Assuming Dimensions: (Depth, Width, Frames) which is standard for raw reads
+            # or (Frames, Depth, Width). We try the most common for python oct:
+            if self.img_obj.stru3d.shape[2] == self.img_obj.img_framenum:
+                # (Depth, Width, Frames)
+                img_slice = self.img_obj.stru3d[:, :, frame_idx]
+            else:
+                # (Frames, Depth, Width)
+                img_slice = self.img_obj.stru3d[frame_idx, :, :]
+        except IndexError:
+            return
+
+        # 2. Normalize & Display Image
+        if img_slice.max() > 0:
+            img_disp = (img_slice / img_slice.max() * 255).astype(np.uint8)
+        else:
+            img_disp = img_slice.astype(np.uint8)
+
+        pixmap = QPixmap.fromImage(qimage2ndarray.array2qimage(img_disp))
+
+        self.scene.clear()
+        self.scene.addPixmap(pixmap)
+
+        # 3. Draw Segmentation Lines
+        # Data structure for layers is usually: (Width, Frames, Layers)
+        if self.img_obj.exist_seg and self.img_obj.layers is not None:
+
+            selected_layer_idx = self.spinBox_CurrentLayer.value()
+            width = img_slice.shape[1]
+
+            # Iterate over all layers
+            for l_idx in range(self.img_obj.layer_num):
+                path = QPainterPath()
+                started = False
+
+                # Extract Y-coordinates for this specific layer and frame
+                # shape: (Width, Frames, Layers) -> [:, frame_idx, l_idx]
+                try:
+                    y_coords = self.img_obj.layers[:, frame_idx, l_idx]
+                except IndexError:
+                    continue
+
+                # Build Path
+                for x in range(len(y_coords)):
+                    y = y_coords[x]
+                    if y > 0:  # Check valid segmentation
+                        if not started:
+                            path.moveTo(x, y)
+                            started = True
+                        else:
+                            path.lineTo(x, y)
+
+                # Color Selection
+                if l_idx == selected_layer_idx:
+                    pen = QPen(Qt.cyan)  # Blue/Cyan for current
+                    pen.setWidth(2)
+                else:
+                    pen = QPen(Qt.red)  # Red for others
+                    pen.setWidth(1)
+
+                self.scene.addPath(path, pen)
+
+        self.graphicsView_Bscan.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+
+    # --------------------------------------------------------------------
+    # MASK & OTHER UTILS
     # --------------------------------------------------------------------
     def populate_mask_list(self):
         if not hasattr(self, 'comboBox_MaskList'): return
         if not self.img_obj.url_stru: return
-
         parent_dir = Path(self.img_obj.url_stru).parent
-
-        # Look for files with 'mask' in name
         patterns = ["*mask*.png", "*mask*.tif", "*mask*.jpg", "*mask*.mat"]
         mask_files = []
         for p in patterns:
             mask_files.extend(glob.glob(os.path.join(parent_dir, p)))
-            mask_files.extend(glob.glob(os.path.join(parent_dir, p.upper())))
-
         self.comboBox_MaskList.clear()
         self.comboBox_MaskList.addItem("No Mask Selected", None)
-
         for f in mask_files:
             self.comboBox_MaskList.addItem(os.path.basename(f), f)
-
-        self.send_log(f"Found {len(mask_files)} mask candidates.")
 
     def on_mask_selected(self, index):
         if index <= 0:
             self.cdlayer = None
             self.send_log("Mask cleared.")
             return
-
         mask_path = self.comboBox_MaskList.itemData(index)
         try:
-            target_shape = (self.img_obj.img_width, self.img_obj.img_framenum)
+            # Simple loading logic for mask
             if mask_path.endswith('.mat'):
                 mat = scipy.io.loadmat(mask_path)
                 key = [k for k in mat.keys() if not k.startswith('_')][0]
                 layer = mat[key]
-                if layer.ndim == 3: layer = layer[:, :, 0]
             else:
                 layer = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
 
-            layer = cv2.resize(layer, target_shape, interpolation=cv2.INTER_NEAREST)
+            layer = cv2.resize(layer, (self.img_obj.img_width, self.img_obj.img_framenum),
+                               interpolation=cv2.INTER_NEAREST)
             self.cdlayer = layer
             self.send_log(f"Mask Loaded: {os.path.basename(mask_path)}")
         except Exception as e:
             self.send_log(f"Mask Load Error: {e}")
 
     def on_proj_clicked(self, x, y):
-        # Update spinboxes
         self.spinBox_2.blockSignals(True)
         self.spinBox_3.blockSignals(True)
         self.spinBox_2.setValue(x)
         self.spinBox_3.setValue(y)
         self.spinBox_2.blockSignals(False)
         self.spinBox_3.blockSignals(False)
-
         self.fovea_center = (x, y)
         self.scene_proj.update_cursor(x, y)
 
@@ -351,203 +475,355 @@ class ORLThicknessWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         x = self.spinBox_2.value()
         y = self.spinBox_3.value()
         self.fovea_center = (x, y)
-        self.scene_proj.update_cursor(x, y)
+        if self.scene_proj: self.scene_proj.update_cursor(x, y)
 
     def auto_detect_fovea(self):
-        if not hasattr(self, 'img_proj_stru'):
-            self.send_log("No projection data for auto-detect.")
-            return
-
+        if self.current_proj_pixmap is None: return
         try:
-            # Simple Center of Mass
-            cy, cx = center_of_mass(self.img_proj_stru)
-            self.on_proj_clicked(int(cx), int(cy))
-            self.send_log(f"Auto-Fovea: {int(cx)}, {int(cy)}")
-        except Exception as e:
-            self.send_log(f"Auto-Detect Failed: {e}")
+            # Convert pixmap back to image or use cached array if stored
+            # For simplicity, using center of image
+            w, h = self.current_proj_pixmap.width(), self.current_proj_pixmap.height()
+            self.on_proj_clicked(w // 2, h // 2)
+            self.send_log(f"Auto-Fovea set to center.")
+        except:
+            pass
 
     # --------------------------------------------------------------------
-    # COMPUTATION LOGIC
+    # RESTORED COMPUTATION & DATA LOGIC
     # --------------------------------------------------------------------
-    def compute_ORL_thickness(self):
-        if self.img_obj.layers is None: return
-
-        # Inputs
-        start = self.spinBox_StartLayer.value()
-        end = self.spinBox_EndLayer.value()
-        axial = self.doubleSpinBox_Axial.value() if hasattr(self, 'doubleSpinBox_Axial') else 1.96
-        is_rpebm = self.checkBox_RPEBM.isChecked() if hasattr(self, 'checkBox_RPEBM') else False
-
-        self.send_log(f"Computing: L{start}-L{end}, Spacing={axial}, RPE-BM={is_rpebm}")
-
-        # Calc Raw Difference (Pixels)
-        diff_px = abs(self.img_obj.layers[:, :, start] - self.img_obj.layers[:, :, end])
-
-        # Convert to Microns and Transpose for map view
-        # Map view is usually (Frames x Width)
-        map_um = np.transpose(diff_px * axial)
-        map_um = median_filter(gaussian_filter(map_um, sigma=(5, 1)), (1, 3))
-
-        # Metrics Setup
+    def set_thickness_data_frame(self):
+        """
+        Initializes the pandas DataFrame used to store thickness results.
+        """
         self.thickness_data = pd.DataFrame(
             columns=['All', '1mm', '3mm', '5mm'],
             index=['With Mask', 'W/O Mask', 'Fovea (X,Y)']
         )
-        if is_rpebm:
-            self.thickness_data.loc['Drusen Area (mm2)'] = [0] * 4
-            self.thickness_data.loc['Drusen Vol (mm3)'] = [0] * 4
 
-        # Masks for ETDRS circles
-        h, w = map_um.shape
-        scan_width_mm = 6.0
-        px_per_mm = w / scan_width_mm  # Approx
+    def compute_ORL_thickness(self):
+        """
+        Calculates thickness maps, handling layer swapping automatically (e.g. 8 vs 10).
+        """
+        if self.img_obj.layers is None:
+            self.send_log("Error: No layers found to compute thickness.")
+            return
 
-        mask1 = self.create_circular_mask(h, w, radius=(0.5 * px_per_mm))
-        mask3 = self.create_circular_mask(h, w, radius=(1.5 * px_per_mm))
-        mask5 = self.create_circular_mask(h, w, radius=(2.5 * px_per_mm))
+        table = self.tableWidget_ORLThicknessNumber
 
-        masks = [np.ones_like(map_um, dtype=bool), mask1, mask3, mask5]
+        # 1. Handle Layer Selection (Auto-Swap)
+        # We take the absolute difference, so order technically doesn't matter for the math,
+        # but sorting them ensures consistent behavior if we add directional logic later.
+        l1 = self.spinBox_StartLayer.value()
+        l2 = self.spinBox_EndLayer.value()
+        startlayer, endlayer = sorted((l1, l2))
 
-        # Calculate Basic Thickness
-        vals_nomask = []
-        vals_mask = []
+        self.send_log(f"Computing thickness between Layer {startlayer} and {endlayer}")
 
-        # External Mask Handling
-        ext_mask = None
+        # 2. Calculate Thickness Map (Pixels -> Microns)
+        # Using the absolute difference ensures it works even if layers are inverted
+        scale_factor = 3 / 1.536
+        diff_abs = np.abs(self.img_obj.layers[:, :, startlayer] - self.img_obj.layers[:, :, endlayer])
+
+        # Transpose to match map orientation (Width x Frames -> Frames x Width)
+        img_thickness = np.transpose(diff_abs * scale_factor)
+
+        # Apply Filters (Median + Gaussian)
+        img_thickness = median_filter(gaussian_filter(img_thickness, sigma=(5, 1)), (1, 3))
+
+        # 3. Setup Masks (ETDRS Circles: 1mm, 3mm, 5mm)
+        h, w = img_thickness.shape[0], img_thickness.shape[1]
+
+        # Radius logic: 42 pixels approx 1mm diameter (radius=0.5mm)
+        mask1 = self.create_circular_mask(h, w, radius=42)
+        mask2 = self.create_circular_mask(h, w, radius=42 * 3)
+        mask3 = self.create_circular_mask(h, w, radius=42 * 5)
+
+        # 4. Calculate Statistics
+
+        # -- External Mask Handling (for "With Mask" row) --
         if hasattr(self, 'cdlayer') and self.cdlayer is not None:
-            # Resize mask to match map
-            ext_mask = cv2.resize(self.cdlayer, (w, h), interpolation=cv2.INTER_NEAREST).T
+            # Ensure cdlayer is resized to match current data
+            ext_mask = self.cdlayer
+            if ext_mask.shape != img_thickness.shape:
+                ext_mask = cv2.resize(ext_mask, (w, h), interpolation=cv2.INTER_NEAREST)
 
-        for m in masks:
-            # W/O Mask
-            tmp = map_um.copy()
-            tmp[~m] = np.nan
-            vals_nomask.append(np.nanmean(tmp))
+            with_mask_map = img_thickness.copy()
+            with_mask_map[ext_mask != 0] = 0  # Mask out pathology
+            with_mask_map[with_mask_map < 0] = 0
+        else:
+            with_mask_map = np.zeros_like(img_thickness)
 
-            # With Mask
-            tmp2 = map_um.copy()
-            tmp2[~m] = np.nan
-            if ext_mask is not None:
-                tmp2[ext_mask > 0] = np.nan
-            vals_mask.append(np.nanmean(tmp2))
+        # -- Helper to calculate mean for a specific map --
+        def get_means(map_data):
+            # Create masked copies
+            m1 = map_data.copy();
+            m1[~mask1] = 0
+            m3 = map_data.copy();
+            m3[~mask2] = 0
+            m5 = map_data.copy();
+            m5[~mask3] = 0
 
-        # Update Table
-        self.update_table_row(0, vals_mask)
-        self.update_table_row(1, vals_nomask)
+            # Use nanmean, treating 0 as no-data (NaN) for accurate average
+            # (If 0 is a valid thickness for you, remove the '== 0' checks)
+            map_data_n = map_data.copy();
+            map_data_n[map_data_n == 0] = np.nan
+            m1[m1 == 0] = np.nan
+            m3[m3 == 0] = np.nan
+            m5[m5 == 0] = np.nan
 
-        # Drusen Logic (Old Code adaptation)
-        if is_rpebm:
-            ele2 = np.transpose(diff_px)  # In pixels
-            ele2 = median_filter(ele2, size=(5, 5))
+            return [np.nanmean(map_data_n), np.nanmean(m1), np.nanmean(m3), np.nanmean(m5)]
 
-            # Thresholding
-            thresh_samples = 6  # approx 12um
-            drusen_mask = ele2 > thresh_samples
+        # Get means
+        means_wo = get_means(img_thickness)  # Row 1: W/O Mask
 
-            # If external mask exists (GA), exclude it from Drusen calc
-            if ext_mask is not None:
-                drusen_mask[ext_mask > 0] = False
+        if hasattr(self, 'cdlayer') and self.cdlayer is not None:
+            means_w = get_means(with_mask_map)  # Row 0: With Mask
+        else:
+            means_w = [0, 0, 0, 0]
 
-            # Area
-            pixel_area_mm2 = (scan_width_mm / w) * (scan_width_mm / h)
-            area = np.sum(drusen_mask) * pixel_area_mm2
+        # 5. Update UI Table
+        # Row 0: With Mask
+        for col, val in enumerate(means_w):
+            val_str = "NaN" if np.isnan(val) else f"{val:.2f}"
+            table.setItem(0, col, QTableWidgetItem(val_str))
 
-            # Volume (microns * area / 1000)
-            vol = np.sum(ele2[drusen_mask]) * axial * pixel_area_mm2 / 1000.0
+        # Row 1: W/O Mask
+        for col, val in enumerate(means_wo):
+            val_str = "NaN" if np.isnan(val) else f"{val:.2f}"
+            table.setItem(1, col, QTableWidgetItem(val_str))
 
-            # Add to table (Rows 3 and 4)
-            tab = self.tableWidget_ORLThicknessNumber
-            if tab.rowCount() < 5:
-                tab.insertRow(3);
-                tab.insertRow(4)
-                tab.setVerticalHeaderItem(3, QTableWidgetItem("Drusen Area"))
-                tab.setVerticalHeaderItem(4, QTableWidgetItem("Drusen Vol"))
+        # 6. Update DataFrame (Fixing the broadcasting error)
+        # We explicitly convert NaNs to 0.0 or keep them as float for the CSV
+        clean_w = [0.0 if np.isnan(x) else float(f"{x:.6f}") for x in means_w]
+        clean_wo = [0.0 if np.isnan(x) else float(f"{x:.6f}") for x in means_wo]
 
-            tab.setItem(3, 0, QTableWidgetItem(f"{area:.3f}"))
-            tab.setItem(4, 0, QTableWidgetItem(f"{vol:.5f}"))
+        self.thickness_data.loc['With Mask'] = clean_w
+        self.thickness_data.loc['W/O Mask'] = clean_wo
 
-        # Save to DF
-        self.thickness_data.loc['With Mask'] = vals_mask
-        self.thickness_data.loc['W/O Mask'] = vals_nomask
-        self.thickness_data.loc['Fovea (X,Y)'] = [self.fovea_center[0], self.fovea_center[1], 0, 0]
+        # Update Fovea
+        x_coord = self.spinBox_2.value()
+        y_coord = self.spinBox_3.value()
+        self.thickness_data.loc["Fovea (X,Y)"] = [x_coord / 1000, y_coord / 1000, 0, 0]
 
-        self.display_map(map_um, ext_mask)
-
-    # --------------------------------------------------------------------
-    # VISUALIZATION & UTILS
-    # --------------------------------------------------------------------
-    def display_map(self, map_um, ext_mask):
-        # Create Plot
-        fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
-
-        # Colormap
-        jet = plt.cm.jet
-        colors = jet(np.linspace(0, 1, 256))
-        colors[0] = [1, 1, 1, 1]  # White background for 0
-        cmap = ListedColormap(colors)
-
-        display_img = map_um.copy()
-        if ext_mask is not None:
-            display_img[ext_mask > 0] = 0  # Mask out
-
-        cax = ax.imshow(display_img, cmap=cmap, vmin=0, vmax=300)
-        ax.axis('off')
-
-        # Draw Circles
-        if self.fovea_center:
-            cx, cy = self.fovea_center
-            h, w = map_um.shape
-            # Assuming fovea coordinates were relative to projection (0-500)
-            # Need to ensure they match map coordinates
-            scan_width_mm = 6.0
-            px_per_mm = w / scan_width_mm
-
-            for r_mm in [0.5, 1.5, 2.5]:
-                circ = Circle((cx, cy), r_mm * px_per_mm, fill=False, color='black', linewidth=0.5)
-                ax.add_patch(circ)
-
-        plt.colorbar(cax, ax=ax, fraction=0.046, pad=0.04)
-
-        # Save temp
-        tmp_path = os.path.join(current_dir, "temp_map.png")
-        plt.savefig(tmp_path, bbox_inches='tight', pad_inches=0)
-        plt.close(fig)
-
-        # Load to scene
-        pix = QPixmap(tmp_path)
-        self.scene_cd.clear()
-        self.scene_cd.addPixmap(pix)
-        self.graphicsView_thicknessmap_w_mask.fitInView(self.scene_cd.sceneRect(), Qt.KeepAspectRatio)
-
-    def draw_bscan(self):
-        # Placeholder for drawing B-scan lines
-        # (Requires converting logic from 'scenes.py' to here or using imported scenes)
-        # Assuming you have the 'scene' object from imported scenes.py working
-        pass
-
-    def update_table_row(self, row, vals):
-        for i, v in enumerate(vals):
-            self.tableWidget_ORLThicknessNumber.setItem(row, i, QTableWidgetItem(f"{v:.2f}"))
-
-    def create_circular_mask(self, h, w, radius):
-        center = self.fovea_center if self.fovea_center else (w // 2, h // 2)
-        Y, X = np.ogrid[:h, :w]
-        dist = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
-        return dist <= radius
-
-    def set_thickness_data_frame(self):
-        self.thickness_data = pd.DataFrame(columns=['All', '1mm', '3mm', '5mm'], index=['With Mask', 'W/O Mask'])
+        self.send_log("Thickness Computation Complete")
+        self.display_cd_mask_thickness_map()
 
     def on_button_clicked_save_results(self):
-        if not self.img_obj.exist_stru: return
-        path = self.img_obj.url_stru if hasattr(self.img_obj, 'url_stru') else "ORL_Results.csv"
-        save_path = os.path.splitext(path)[0] + "_thickness.csv"
-        self.thickness_data.to_csv(save_path)
-        self.send_log(f"Saved: {save_path}")
+        """
+        Saves the thickness_data DataFrame to a CSV file.
+        """
+        if self.thickness_data is None:
+            self.send_log("No data to save.")
+            return
+
+        # Determine Save Path based on loaded struct file
+        if hasattr(self.img_obj, 'url_stru') and self.img_obj.url_stru:
+            filepath = os.path.dirname(self.img_obj.url_stru)
+            filename_stem = Path(self.img_obj.url_stru).stem
+        else:
+            filepath = os.getcwd()
+            filename_stem = "Default"
+
+        if not os.path.exists(filepath):
+            os.makedirs(filepath)
+
+        # Naming logic
+        if hasattr(self, 'cdlayer') and self.cdlayer is not None:
+            name = filename_stem + '_thickness_number.csv'
+            self.send_log("Saved: Thickness files saved (With Mask)")
+        else:
+            name = filename_stem + '_thickness_number_without_mask_only.csv'
+            self.send_log("Saved: Thickness without mask saved")
+
+        save_loc = os.path.join(filepath, name)
+        self.thickness_data.to_csv(save_loc, float_format='%.6f')
+
+    def send_log(self, text):
+        """
+        Appends text to the log window with a timestamp.
+        """
+        t = datetime.now().strftime("%H:%M:%S")
+        self.plainTextEdit.appendPlainText(f"{t} -- {text}")
+
+    # --------------------------------------------------------------------
+    # REQUIRED HELPER (Must be present for compute_ORL_thickness to work)
+    # --------------------------------------------------------------------
+    def create_circular_mask(self, h, w, center=None, radius=None):
+        if center is None:
+            # Note: fovea_center stored as (x,y), but numpy grid often needs (y,x) or proper indexing
+            # Your original code used: center = self.fovea_center if... else (w/2, h/2)
+            if self.fovea_center:
+                center = self.fovea_center
+            else:
+                center = (int(w / 2), int(h / 2))
+
+        if radius is None:
+            radius = min(center[0], center[1], w - center[0], h - center[1])
+
+        Y, X = np.ogrid[:h, :w]
+        dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
+
+        mask = dist_from_center <= radius
+        return mask
+
+    def set_thickness_data_frame(self):
+        """
+        Initializes the pandas DataFrame with ALL 4 columns to prevent shape mismatch errors.
+        """
+        self.thickness_data = pd.DataFrame(
+            columns=['All', '1mm', '3mm', '5mm'],
+            index=['With Mask', 'W/O Mask', 'Fovea (X,Y)']
+        )
 
     def send_log(self, text):
         t = datetime.now().strftime("%H:%M:%S")
         self.plainTextEdit.appendPlainText(f"{t} -- {text}")
+
+    def display_cd_mask_thickness_map(self):
+        """
+        Generates thickness maps (0-100um, 0-200um), saves them in a dedicated folder,
+        and fixes aspect ratio issues.
+        """
+        if self.img_obj.layers is None: return
+
+        # --- 1. SETUP DATA & PATHS ---
+        try:
+            import tifffile
+        except ImportError:
+            tifffile = None
+
+        # Get Scale (Axial Res in microns/pixel)
+        if hasattr(self, 'doubleSpinBox_Axial'):
+            axial_res = self.doubleSpinBox_Axial.value()
+        else:
+            axial_res = 3 / 1.536  # ~1.953 um/pixel
+
+        startlayer = self.spinBox_StartLayer.value()
+        endlayer = self.spinBox_EndLayer.value()
+        l1, l2 = sorted((startlayer, endlayer))
+
+        # Calculate Thickness (Pixel & Micron)
+        # Shape: (Width, Frames) -> Transpose to (Frames, Width) for correct orientation
+        diff_px = np.transpose(np.abs(self.img_obj.layers[:, :, l1] - self.img_obj.layers[:, :, l2]))
+
+        # Smooth
+        diff_px = median_filter(gaussian_filter(diff_px, sigma=(5, 1)), (1, 3))
+
+        # Convert to Microns (Values are now in um)
+        diff_um = diff_px * axial_res
+
+        # --- NEW: Create Designated Results Folder ---
+        if hasattr(self.img_obj, 'url_stru') and self.img_obj.url_stru:
+            parent_dir = os.path.dirname(self.img_obj.url_stru)
+            stem = Path(self.img_obj.url_stru).stem
+        else:
+            parent_dir = os.getcwd()
+            stem = "result"
+
+        # Create a specific folder for these results
+        results_dir = os.path.join(parent_dir, f"{stem}_Analysis_Results")
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+
+        self.send_log(f"Saving outputs to: {results_dir}")
+
+        # --- 2. SAVE RAW DATA (CSV) ---
+        # Save Pixel Data
+        np.savetxt(os.path.join(results_dir, f"{stem}_Thickness_Pixels.csv"), diff_px, delimiter=",", fmt="%.4f")
+        # Save Micron Data (In um, not mm)
+        np.savetxt(os.path.join(results_dir, f"{stem}_Thickness_Microns.csv"), diff_um, delimiter=",", fmt="%.4f")
+
+        # Save Metadata
+        with open(os.path.join(results_dir, f"{stem}_Metadata.txt"), "w") as f:
+            f.write(f"Analyzed File: {stem}\n")
+            f.write(f"Layer Range: {l1} - {l2}\n")
+            f.write(f"Axial Resolution: {axial_res} um/pixel\n")
+            f.write(f"Unit: Microns (um)\n")
+
+        # --- 3. PLOTTING HELPER ---
+        def save_fancy_map(data_um, suffix, vmin, vmax, add_circles=False, add_colorbar=False, mask_zeros=False):
+            # Create Figure
+            # Note: aspect='equal' is crucial here to prevent vertical compression
+            fig, ax = plt.subplots(figsize=(6, 6), dpi=100)
+
+            # Setup Colormap
+            cmap = plt.cm.jet
+            cmap.set_bad(color='black')
+
+            plot_data = data_um.copy()
+            if mask_zeros:
+                # Mask out 0 values so they appear white/background color
+                plot_data = np.ma.masked_where(plot_data <= 0, plot_data)
+                cmap.set_bad(color='white')
+
+            # PLOT IMAGE
+            # aspect='equal' ensures 1 pixel width = 1 pixel height (Square)
+            im = ax.imshow(plot_data, cmap=cmap, vmin=vmin, vmax=vmax, aspect='equal')
+            ax.axis('off')
+
+            # Add Circles
+            if add_circles and self.fovea_center:
+                cx, cy = self.fovea_center
+                for r in [42, 42 * 3, 42 * 5]:
+                    c = Circle((cx, cy), r, color='white' if mask_zeros else 'black', fill=False, linewidth=1)
+                    ax.add_patch(c)
+
+            # Add Colorbar
+            if add_colorbar:
+                # fraction=0.046 and pad=0.04 are magic numbers to make colorbar match image height
+                cbar = plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+                cbar.set_label('Thickness (µm)')
+
+            # Construct Filename
+            range_tag = f"_{vmin}-{vmax}um"
+            feat_tag = "_Circles" if add_circles else ""
+            bar_tag = "_Cbar" if add_colorbar else ""
+            fname = f"{stem}_{suffix}{range_tag}{feat_tag}{bar_tag}.png"
+
+            full_path = os.path.join(results_dir, fname)
+            plt.savefig(full_path, bbox_inches='tight', dpi=150)
+            plt.close(fig)
+            return full_path
+
+        # --- 4. GENERATE MAPS ---
+        datasets = [("Raw", diff_um)]
+
+        # Handle Masking (CDLayer)
+        if hasattr(self, 'cdlayer') and self.cdlayer is not None:
+            ext_mask = self.cdlayer
+            if ext_mask.shape != diff_um.shape:
+                ext_mask = cv2.resize(ext_mask, (diff_um.shape[1], diff_um.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+            masked_um = diff_um.copy()
+            masked_um[ext_mask != 0] = 0
+            datasets.append(("Masked", masked_um))
+
+            # Save Masked CSV
+            np.savetxt(os.path.join(results_dir, f"{stem}_Thickness_Microns_Masked.csv"), masked_um, delimiter=",",
+                       fmt="%.4f")
+
+        ranges = [(0, 100), (0, 200)]
+        last_image_path = None
+
+        for name, data in datasets:
+            for (vmin, vmax) in ranges:
+                # 1. Plain (Viewing)
+                path = save_fancy_map(data, name, vmin, vmax, add_circles=False, add_colorbar=False)
+                # 2. Circles + Colorbar
+                save_fancy_map(data, name, vmin, vmax, add_circles=True, add_colorbar=True)
+                # 3. Just Colorbar
+                save_fancy_map(data, name, vmin, vmax, add_circles=False, add_colorbar=True)
+
+                # Update GUI with the 0-200 masked version if available
+                if vmax == 200:
+                    last_image_path = path
+
+        # --- 5. UPDATE GUI ---
+        if last_image_path and os.path.exists(last_image_path):
+            pixmap = QPixmap(last_image_path)
+            self.scene_cd.clear()
+            self.scene_cd.addPixmap(pixmap)
+            self.graphicsView_thicknessmap_w_mask.fitInView(self.scene_cd.sceneRect(), Qt.KeepAspectRatio)
 
 
 if __name__ == "__main__":

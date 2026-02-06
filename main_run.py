@@ -18,19 +18,10 @@ from datetime import datetime
 import imageio_ffmpeg as ffmpeg
 import io
 
-# Setup Python Path to find subfolders
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# Import Global State
-# Note: Ensure Utils/data_class.py exists
 from Utils.data_class import state
 
 img_obj = state.img_obj
-
-
-# -----------------------------------------------------------------------------
-# WORKER THREAD FOR LOADING FILES (Prevents "Not Responding")
-# -----------------------------------------------------------------------------
 class LoadWorker(QThread):
     """
     Worker thread to load files in the background without freezing the UI
@@ -56,12 +47,6 @@ class LoadWorker(QThread):
         except Exception as e:
             self.finished.emit(False, str(e))
 
-
-# -----------------------------------------------------------------------------
-# MAIN WINDOW
-# -----------------------------------------------------------------------------
-
-# Load UI File
 current_dir = os.path.dirname(os.path.abspath(__file__))
 UI_FILE_PATH = os.path.join(current_dir, 'UI', 'design_smooth.ui')
 
@@ -86,8 +71,8 @@ from Analysis.SM.layer_seg_parallel import seg_video_parallel, OAC_calculation
 from Analysis.SM.AlternateSegmentation import quick_process_video
 from Analysis.Layers_Wizard.SegWizard import SegWizardWindow
 from Analysis.ORLThickness.ORLThickness import ORLThicknessWindow
-from Analysis.CCFD.CCquanWindow import CCquanWindow
-from Analysis.Segmentation_Correction.Manual_Correction import SegWindow
+from Analysis.CCFD_Standalone.CCFD_main import CCquanWindow
+from Analysis.Seg_Correct_better.ManualSegCheck import SegWindow
 from Analysis.Registration_Codes.ORLRegistration_old import ORLdifference
 
 # Environment Settings
@@ -282,6 +267,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.send_and_display_the_log(f'Load seg file: {files}')
             self.pop_up_alert('Load success')
             self.spinbox_range_set()
+
+            # --- FIX: Generate Unique Result Folder ---
+            # Get the parent directory of the loaded file
+            base_dir = os.path.dirname(files)
+
+            # Create a unique name: "Results_YYYY-MM-DD_HH-MM-SS"
+            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+            unique_folder_name = f"Results_{timestamp}"
+
+            # Construct full path
+            new_save_path = os.path.join(base_dir, unique_folder_name)
+
+            # Set this path in the UI (but don't create it yet, wait for Save button)
+            self.lineEdit_SavePath.setText(new_save_path)
+            self.send_and_display_the_log(f"New save path set: {unique_folder_name}")
+            # ------------------------------------------
+
             # Force lines to show
             self.plot_lines = True
             self.scroll_bar_reset()
@@ -674,12 +676,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.set_item_on_table(table, row, 5, str(is_proj_stru))
         self.set_item_on_table(table, row, 6, str(is_proj_flow))
 
-        self.proj_data = self.proj_data._append({
-            'start_layer': start_layer, 'end_layer': end_layer,
-            'start_offset': start_offset, 'end_offset': end_offset,
-            'proj_method': proj_method, 'is_proj_stru': is_proj_stru,
+        # Create a single-row DataFrame for the new data
+        new_row = pd.DataFrame([{
+            'start_layer': start_layer,
+            'end_layer': end_layer,
+            'start_offset': start_offset,
+            'end_offset': end_offset,
+            'proj_method': proj_method,
+            'is_proj_stru': is_proj_stru,
             'is_proj_flow': is_proj_flow
-        }, ignore_index=True)
+        }])
+
+        # Use concat instead of append (which is deprecated/removed)
+        self.proj_data = pd.concat([self.proj_data, new_row], ignore_index=True)
 
         self.spinBox_ProjGroups.setMaximum(self.proj_data.shape[0] - 1)
 
@@ -844,10 +853,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def on_button_clicked_manual_segmentation(self):
         try:
-            self.SW = SegWindow()
+            self.SW = SegWindow(data_in=self.img_obj)
             self.SW.show()
         except Exception as e:
-            print(e)
+            print(f"Error opening SegWindow: {e}")
 
     def on_button_clicked_CCquan(self):
         try:
@@ -868,7 +877,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def on_button_clicked_ORLThicknessWindow(self):
         try:
-            self.ORLThickness = ORLThicknessWindow()
+            self.ORLThickness = ORLThicknessWindow(img_obj=self.img_obj)
             self.ORLThickness.show()
         except:
             pass
@@ -882,9 +891,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def on_button_clicked_save_results(self):
         url = self.lineEdit_SavePath.text()
+
+        # --- FIX 2: Create folder if it doesn't exist ---
         if not os.path.exists(url):
-            self.pop_up_alert("Save path does not exist!")
-            return
+            try:
+                os.makedirs(url)
+                self.send_and_display_the_log(f"Created new save folder: {url}")
+            except OSError as e:
+                self.pop_up_alert(f"Could not create save directory: {e}")
+                return
 
         saved_items = []
 
@@ -896,22 +911,64 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except Exception as e:
                 print(f"Seg Save Error: {e}")
 
-        # 2. SAVE PROJECTIONS (Current View)
+        # --- FIX 1: Indentation fixed. This block is now outside the 'except' block ---
+        # 2. SAVE PROJECTIONS (Iterate through Table)
         if self.checkBox_SaveProjections.isChecked():
             try:
-                # Re-generate to ensure we have the latest data
-                self.on_button_clicked_proj()
+                if self.proj_data.empty:
+                    self.send_and_display_the_log("No projections in table to save.")
+                else:
+                    self.send_and_display_the_log(f"Saving {len(self.proj_data)} projections...")
 
-                if hasattr(self, 'img_proj_stru') and self.img_proj_stru is not None:
-                    # img_proj_stru is already rotated/flipped by the display function
-                    plt.imsave(os.path.join(url, 'proj_stru.png'), self.img_proj_stru, cmap='gray')
-                    saved_items.append("Proj Stru")
+                    # Iterate through every row in the table/dataframe
+                    for index, row in self.proj_data.iterrows():
+                        # Extract parameters safely
+                        start = int(row['start_layer'])
+                        end = int(row['end_layer'])
+                        s_off = int(row['start_offset'])
+                        e_off = int(row['end_offset'])
+                        method = row['proj_method']
+                        do_stru = row['is_proj_stru']
+                        do_flow = row['is_proj_flow']
 
-                if hasattr(self, 'img_proj_flow') and self.img_proj_flow is not None:
-                    plt.imsave(os.path.join(url, 'proj_flow.png'), self.img_proj_flow, cmap='gray')
-                    saved_items.append("Proj Flow")
+                        # Generate unique filename prefix for this row
+                        name_prefix = f"Proj_{index}"
+
+                        # --- Process Structure ---
+                        if do_stru and img_obj.exist_stru:
+                            # Generate
+                            raw_stru = img_obj.plot_proj(
+                                start, end, 'stru', method,
+                                start_offset=s_off, end_offset=e_off,
+                                display=False, rotate=False
+                            )
+                            # Fix Orientation
+                            final_stru = self.fix_orientation(raw_stru)
+                            # Save
+                            if final_stru is not None:
+                                fname = f"{name_prefix}_Stru_{method}_L{start}-{end}.png"
+                                plt.imsave(os.path.join(url, fname), final_stru, cmap='gray')
+
+                        # --- Process Flow ---
+                        if do_flow and img_obj.exist_flow:
+                            # Generate
+                            raw_flow = img_obj.plot_proj(
+                                start, end, 'flow', method,
+                                start_offset=s_off, end_offset=e_off,
+                                display=False, rotate=False
+                            )
+                            # Fix Orientation
+                            final_flow = self.fix_orientation(raw_flow)
+                            # Save
+                            if final_flow is not None:
+                                fname = f"{name_prefix}_Flow_{method}_L{start}-{end}.png"
+                                plt.imsave(os.path.join(url, fname), final_flow, cmap='gray')
+
+                    saved_items.append(f"All Table Projections ({len(self.proj_data)})")
+
             except Exception as e:
                 print(f"Proj Save Error: {e}")
+                self.send_and_display_the_log(f"Proj Save Error: {e}")
 
         # 3. SAVE THICKNESS (Map + CSV)
         if self.checkBox_SaveThickness.isChecked() and img_obj.exist_seg:
@@ -935,8 +992,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             except Exception as e:
                 print(f"Thickness Save Error: {e}")
 
-        # 4. SAVE OAC (Optical Attenuation Coefficient)
-        # We check for STRUCTURE because OAC is calculated from Structure
+        # 4. SAVE OAC
         if self.checkBox_SaveOAC.isChecked() and img_obj.exist_stru and img_obj.exist_seg:
             try:
                 start = self.spinBox_StartLayer.value()
@@ -944,23 +1000,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 if start > end: start, end = end, start
 
                 self.send_and_display_the_log("Calculating OAC... this might take a moment.")
-
-                # Call the new projection helper
-                # This handles the volume calculation + slab projection internally
                 oac_map = img_obj.get_oac_projection(start, end)
 
                 if oac_map is not None:
-                    # Fix Orientation
                     oac_map = self.fix_orientation(oac_map)
-
-                    # Save
                     plt.imsave(os.path.join(url, 'OAC.png'), oac_map, cmap='gray')
                     saved_items.append("OAC")
-                else:
-                    print("OAC calculation returned None.")
             except Exception as e:
                 self.send_and_display_the_log(f"OAC Save Error: {e}")
-                print(f"OAC Error Details: {e}")
+
         # 5. SAVE ORIGINAL VIDEO (AVI)
         if self.checkBox_AviVideo.isChecked():
             try:
