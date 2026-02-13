@@ -40,6 +40,9 @@ class PreviewScene(QtWidgets.QGraphicsScene):
         self.clear()
         if self.img_data is not None:
             # Normalize and display image
+            print(f"Image Height: {self.img_data.shape[0]}")
+            print(f"Layer Data Max Y: {np.nanmax(self.layer_data)}")
+            print(f"Layer Data Shape: {self.layer_data.shape}")
             disp_img = self.img_data.astype(float)
             if disp_img.max() > 0:
                 disp_img = disp_img / disp_img.max() * 255
@@ -242,7 +245,6 @@ class SegWizardWindow(QtWidgets.QDialog):
             self.img_obj.exist_seg = True
 
             self.update_progress_ui(100, "Completed")
-
             # 5. Confirmation Popup
             elapsed = time.time() - start_time
             msg = QtWidgets.QMessageBox()
