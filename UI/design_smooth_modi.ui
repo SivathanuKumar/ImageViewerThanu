@@ -221,7 +221,7 @@ QTabBar::tab:hover {
      <attribute name="title">
       <string> Segmentation Check </string>
      </attribute>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <property name="geometry">
        <rect>
         <x>1</x>
@@ -1291,66 +1291,6 @@ QTabBar::tab:hover {
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout_3">
-     <item row="0" column="2">
-      <widget class="QLCDNumber" name="lcdNumber_FastScan">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(85, 170, 255);</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="5">
-      <widget class="QLCDNumber" name="lcdNumber_SlowScan">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(85, 170, 255);</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="8">
-      <widget class="QLCDNumber" name="lcdNumber_DepthScan">
-       <property name="styleSheet">
-        <string notr="true">background-color: rgb(85, 170, 255);</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0" rowspan="3" colspan="3">
-      <widget class="QGraphicsView" name="graphicsView_FastScan">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>250</width>
-         <height>550</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3" rowspan="3" colspan="3">
-      <widget class="QGraphicsView" name="graphicsView_SlowScan">
-       <property name="minimumSize">
-        <size>
-         <width>250</width>
-         <height>550</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="6" colspan="3">
-      <widget class="QGraphicsView" name="graphicsView_DepthScan">
-       <property name="minimumSize">
-        <size>
-         <width>250</width>
-         <height>250</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="6" colspan="3">
-      <widget class="QGraphicsView" name="graphicsView_Thickness"/>
-     </item>
      <item row="4" column="6" rowspan="3" colspan="3">
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="2" column="0">
@@ -1409,13 +1349,17 @@ QTabBar::tab:hover {
        </item>
       </layout>
      </item>
-     <item row="6" column="0" colspan="3">
-      <widget class="QGraphicsView" name="graphicsView_ProjectionFlow">
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
+     <item row="0" column="6">
+      <widget class="QLabel" name="label_13">
+       <property name="text">
+        <string>Depth</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0" colspan="3">
+      <widget class="QLabel" name="label_7">
+       <property name="text">
+        <string>Projection Flow</string>
        </property>
       </widget>
      </item>
@@ -1429,31 +1373,10 @@ QTabBar::tab:hover {
        </property>
       </widget>
      </item>
-     <item row="2" column="6" colspan="3">
-      <widget class="QScrollBar" name="horizontalScrollBar_DepthScan">
-       <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
      <item row="4" column="3" colspan="3">
       <widget class="QScrollBar" name="horizontalScrollBar_SlowScan">
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0" colspan="3">
-      <widget class="QScrollBar" name="horizontalScrollBar_FastScan">
-       <property name="orientation">
-        <enum>Qt::Orientation::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0" colspan="3">
-      <widget class="QLabel" name="label_7">
-       <property name="text">
-        <string>Projection Flow</string>
        </property>
       </widget>
      </item>
@@ -1464,10 +1387,39 @@ QTabBar::tab:hover {
        </property>
       </widget>
      </item>
-     <item row="0" column="6">
-      <widget class="QLabel" name="label_13">
-       <property name="text">
-        <string>Depth</string>
+     <item row="6" column="0" colspan="3">
+      <widget class="QGraphicsView" name="graphicsView_ProjectionFlow">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="8">
+      <widget class="QLCDNumber" name="lcdNumber_DepthScan">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(85, 170, 255);</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="6" colspan="3">
+      <widget class="QGraphicsView" name="graphicsView_Thickness"/>
+     </item>
+     <item row="1" column="0" rowspan="3" colspan="3">
+      <widget class="QGraphicsView" name="graphicsView_FastScan">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>250</width>
+         <height>550</height>
+        </size>
        </property>
       </widget>
      </item>
@@ -1478,10 +1430,58 @@ QTabBar::tab:hover {
        </property>
       </widget>
      </item>
+     <item row="0" column="2">
+      <widget class="QLCDNumber" name="lcdNumber_FastScan">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(85, 170, 255);</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3" rowspan="3" colspan="3">
+      <widget class="QGraphicsView" name="graphicsView_SlowScan">
+       <property name="minimumSize">
+        <size>
+         <width>250</width>
+         <height>550</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="6" colspan="3">
+      <widget class="QScrollBar" name="horizontalScrollBar_DepthScan">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
      <item row="0" column="0">
       <widget class="QLabel" name="label_5">
        <property name="text">
         <string>Fast Scan</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="6" colspan="3">
+      <widget class="QGraphicsView" name="graphicsView_DepthScan">
+       <property name="minimumSize">
+        <size>
+         <width>250</width>
+         <height>250</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="5">
+      <widget class="QLCDNumber" name="lcdNumber_SlowScan">
+       <property name="styleSheet">
+        <string notr="true">background-color: rgb(85, 170, 255);</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="0" colspan="3">
+      <widget class="QScrollBar" name="horizontalScrollBar_FastScan">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
       </widget>
      </item>
